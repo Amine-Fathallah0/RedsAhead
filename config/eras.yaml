@@ -1,0 +1,12 @@
+# Manager eras. Boundaries are inclusive; a null end means "still in charge".
+# Each era ends the day before the next one starts, so no match falls in a gap.
+eras:
+  - manager: Klopp
+    start: 2015-10-08
+    end: 2024-05-31
+  - manager: Slot
+    start: 2024-06-01
+    end: 2026-06-03
+  - manager: Iraola
+    start: 2026-06-04
+    end: null
