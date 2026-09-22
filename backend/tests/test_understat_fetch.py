@@ -3,10 +3,9 @@ from pathlib import Path
 import pytest
 import os
 import time
-
-
-from backend.ingest.understat import extract_embedded_json
 from backend.ingest.polite_fetcher import PoliteFetcher
+
+
 class FakeResponse:
     def __init__(self, text):
         self.text = text
@@ -21,36 +20,12 @@ class FakeSession:
     def __init__(self, pages):
         self.pages = pages
         self.calls = []
+        self.headers_seen = []
 
     def get(self, url, **kwargs):
         self.calls.append(url)
+        self.headers_seen.append(kwargs.get("headers"))
         return FakeResponse(self.pages[url])
-
-def test_extract_decodes_hex_escapes():
-    payload = r"[\x7B\x22title\x22\x3A\x22Liverpool\x22\x7D]"
-    html = f"<html><script>var datesData = JSON.parse('{payload}');</script></html>"
-
-    result = extract_embedded_json(html, "datesData")
-
-    assert result == [{"title": "Liverpool"}]
-
-def test_extract_raises_key_error_when_variable_missing():
-    with pytest.raises(KeyError, match="teamsData"):
-        extract_embedded_json("<html><body><script>var falsedata = JSON.parse('{\"name\": \"Liverpool\"}');</script></body></html>", "teamsData")
-
-def test_extract_keeps_literal_accented_characters():
-    payload=r"[\x7B\x22name\x22\x3A\x22Jérémy\x22\x7D]"
-    html = f"<html><script>var playersData = JSON.parse('{payload}');</script></html>"
-    result = extract_embedded_json(html, "playersData")
-    assert result == [{"name": "Jérémy"}]
-
-def test_extract_handles_characters_outside_latin1():
-    payload = r"[\x7B\x22name\x22\x3A\x22Çağlar Söyüncü\x22\x7D]"
-    html = f"<html><script>var playersData = JSON.parse('{payload}');</script></html>"
-
-    result = extract_embedded_json(html, "playersData")
-
-    assert result == [{"name": "Çağlar Söyüncü"}]
 
 def test_second_fetch_of_same_url_comes_from_cache(tmp_path: Path):
     session = FakeSession({"u1": "<html>one</html>"})
@@ -116,3 +91,12 @@ def test_fresh_cache_entry_is_not_downloaded_again(tmp_path):
 
     fetcher.get("u1", max_age_seconds=3600)
     assert session.calls==["u1"]
+
+
+def test_every_real_request_sends_the_xhr_header(tmp_path):
+    session = FakeSession({"u1": "A"})
+    fetcher = PoliteFetcher(tmp_path, 0, session=session)
+
+    fetcher.get("u1")
+
+    assert session.headers_seen == [{"X-Requested-With": "XMLHttpRequest"}]

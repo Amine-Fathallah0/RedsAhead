@@ -26,7 +26,7 @@ class PoliteFetcher:
         if self._is_fresh(path, max_age_seconds):
             return path.read_text(encoding="utf-8")
         self._wait_if_needed()
-        response = self.session.get(url, timeout=30)
+        response = self.session.get(url,headers={"X-Requested-With": "XMLHttpRequest"}, timeout=30)
         self._last_request = self._clock()
         response.raise_for_status()
         text = response.text
