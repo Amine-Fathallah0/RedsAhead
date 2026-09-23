@@ -1,5 +1,7 @@
 import json
 
+import pandas as pd
+
 
 def league_url(league: str, season: int) -> str:
     """Builds the Understat endpoint for a given league and season."""
@@ -14,3 +16,22 @@ def fetch_league_data(fetcher, league: str, season: int) -> dict:
     url = league_url(league, season)
     text = fetcher.get(url)
     return json.loads(text)
+
+
+def parse_league_matches(data: dict) -> pd.DataFrame:
+    """One row per played match in a league season, from the 'dates' list."""
+    rows = []
+    for item in data["dates"]:
+        if not item["isResult"]:
+            continue
+        rows.append({
+            "understat_match_id": item["id"],
+            "date": pd.Timestamp(item["datetime"]).date(),
+            "home_team": item["h"]["title"],
+            "away_team": item["a"]["title"],
+            "home_goals": int(item["goals"]["h"]),
+            "away_goals": int(item["goals"]["a"]),
+            "home_xg": float(item["xG"]["h"]),
+            "away_xg": float(item["xG"]["a"]),
+        })
+    return pd.DataFrame(rows)

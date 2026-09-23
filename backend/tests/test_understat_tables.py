@@ -1,6 +1,8 @@
+from datetime import date
 import json
 
-from backend.ingest.understat import fetch_league_data, league_url, match_url
+from backend.ingest.understat import fetch_league_data, league_url, match_url, parse_league_matches
+from pandas import DataFrame
 
 
 class FakeFetcher:
@@ -29,3 +31,35 @@ def test_fetch_league_data_parses_the_json_response():
     result = fetch_league_data(fetcher, "EPL", 2025)
 
     assert result == payload
+
+def test_parse_league_matches_keeps_only_played_matches():
+    data = {
+        "dates": [
+            {
+                "id": "28778", "isResult": True,
+                "h": {"id": "87", "title": "Liverpool"},
+                "a": {"id": "73", "title": "Bournemouth"},
+                "goals": {"h": "4", "a": "2"},
+                "xG": {"h": "2.33133", "a": "1.57"},
+                "datetime": "2025-08-15 19:00:00",
+            },
+            {
+                "id": "29200", "isResult": False,
+                "h": {"id": "87", "title": "Liverpool"},
+                "a": {"id": "80", "title": "Chelsea"},
+                "goals": {"h": None, "a": None},
+                "xG": {"h": None, "a": None},
+                "datetime": "2026-12-05 15:00:00",
+            },
+        ]
+    }
+
+    matches = parse_league_matches(data)
+
+    assert len(matches) == 1
+    first = matches.iloc[0]
+    assert first["understat_match_id"] == "28778"
+    assert first["home_team"] == "Liverpool"
+    assert first["home_goals"] == 4   # as an int, not a string
+    assert first["home_xg"] == 2.33133      # as a float
+    assert first["date"] == date(2025, 8, 15)
