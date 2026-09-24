@@ -7,6 +7,7 @@ from backend.ingest.understat import (
     league_url,
     match_url,
     parse_league_matches,
+    parse_player_seasons,
     parse_team_match_stats,
 )
 from pandas import DataFrame
@@ -122,3 +123,43 @@ def test_ppda_is_nan_when_there_are_no_defensive_actions():
     stats = parse_team_match_stats(data)
 
     assert math.isnan(stats.iloc[0]["ppda"])
+
+
+def player_entry(player_id, name, team):
+    """One player's season totals. Invented numbers; Understat sends them all as strings."""
+    return {
+        "id": player_id, "player_name": name, "games": "4", "time": "331",
+        "goals": "1", "xG": "1.2", "assists": "1", "xA": "0.9", "shots": "10",
+        "key_passes": "6", "yellow_cards": "1", "red_cards": "0",
+        "position": "M S", "team_title": team,
+        "npg": "1", "npxG": "1.1", "xGChain": "3.1", "xGBuildup": "1.4",
+    }
+
+
+def test_parse_player_seasons_types_the_fields_and_tags_the_season():
+    data = {
+        "players": [
+            player_entry("9001", "Test Player One", "Liverpool"),
+            player_entry("9002", "Test Player Two", "Liverpool"),
+        ]
+    }
+
+    players = parse_player_seasons(data, 2025)
+
+    assert len(players) == 2
+    first = players.iloc[0]
+    assert first["season"] == 2025
+    assert first["player_id"] == "9001"
+    assert first["player"] == "Test Player One"
+    assert first["minutes"] == 331
+    assert first["goals"] == 1
+    assert first["xg"] == 1.2
+    assert first["xg_buildup"] == 1.4
+
+
+def test_a_player_who_changed_clubs_keeps_the_raw_team_string():
+    data = {"players": [player_entry("9003", "Test Player Three", "Chelsea,Liverpool")]}
+
+    players = parse_player_seasons(data, 2025)
+
+    assert players.iloc[0]["team"] == "Chelsea,Liverpool"

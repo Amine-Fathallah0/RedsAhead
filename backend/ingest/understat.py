@@ -67,3 +67,33 @@ def parse_team_match_stats(data: dict) -> pd.DataFrame:
                 "xpts": float(entry["xpts"]),
             })
     return pd.DataFrame(rows)
+
+
+def parse_player_seasons(data: dict, season: int) -> pd.DataFrame:
+    """One row per player: their season totals, tagged with the season's start year.
+
+    The payload doesn't say which season it belongs to, so the caller passes it in.
+    `team` is kept exactly as Understat gives it (a player who moved mid-season
+    appears as e.g. "Chelsea,Liverpool")."""
+    rows = []
+    for player in data["players"]:
+        rows.append({
+            "season": season,
+            "player_id": player["id"],
+            "player": player["player_name"],
+            "team": player["team_title"],
+            "position": player["position"],
+            "games": int(player["games"]),
+            "minutes": int(player["time"]),
+            "goals": int(player["goals"]),
+            "assists": int(player["assists"]),
+            "shots": int(player["shots"]),
+            "key_passes": int(player["key_passes"]),
+            "xg": float(player["xG"]),
+            "xa": float(player["xA"]),
+            "npg": int(player["npg"]),
+            "npxg": float(player["npxG"]),
+            "xg_chain": float(player["xGChain"]),
+            "xg_buildup": float(player["xGBuildup"]),
+        })
+    return pd.DataFrame(rows)
