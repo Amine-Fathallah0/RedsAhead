@@ -8,6 +8,7 @@ from backend.ingest.understat import (
     league_url,
     match_url,
     parse_league_matches,
+    parse_match_rosters,
     parse_match_shots,
     parse_player_seasons,
     parse_team_match_stats,
@@ -217,3 +218,55 @@ def test_an_unassisted_shot_has_no_assister():
     shots = parse_match_shots(data)
 
     assert shots.iloc[0]["assister"] is None
+
+
+def roster_entry(player_id, name, side, minutes, roster_in, roster_out):
+    """One player's roster entry for a match. Invented values, sent as strings."""
+    return {
+        "id": "9" + player_id, "player_id": player_id, "player": name,
+        "team_id": "87" if side == "h" else "80", "h_a": side,
+        "position": "DMC", "positionOrder": "5",
+        "time": minutes, "roster_in": roster_in, "roster_out": roster_out,
+        "goals": "0", "own_goals": "0", "shots": "0", "key_passes": "0",
+        "assists": "0", "xG": "0.0", "xA": "0.0", "xGChain": "0.3", "xGBuildup": "0.2",
+        "yellow_card": "0", "red_card": "0",
+    }
+
+
+def test_parse_match_rosters_keeps_every_player_including_unused_subs():
+    data = {
+        "rosters": {
+            "h": {
+                "1": roster_entry("101", "Starter", "h", "90", "0", "0"),
+                "2": roster_entry("102", "Unused Sub", "h", "0", "0", "0"),
+            },
+            "a": {
+                "3": roster_entry("201", "Away Starter", "a", "78", "0", "1"),
+            },
+        }
+    }
+
+    rosters = parse_match_rosters(data)
+
+    assert len(rosters) == 3
+    assert set(rosters["player"]) == {"Starter", "Unused Sub", "Away Starter"}
+    starter = rosters[rosters["player"] == "Starter"].iloc[0]
+    assert starter["minutes"] == 90
+    assert starter["position"] == "DMC"
+    assert starter["team_id"] == "87"
+    unused = rosters[rosters["player"] == "Unused Sub"].iloc[0]
+    assert unused["minutes"] == 0
+
+
+def test_parse_match_rosters_keeps_the_substitution_links():
+    data = {
+        "rosters": {
+            "h": {},
+            "a": {"3": roster_entry("201", "Away Starter", "a", "78", "0", "1")},
+        }
+    }
+
+    rosters = parse_match_rosters(data)
+
+    assert rosters.iloc[0]["roster_in"] == 0
+    assert rosters.iloc[0]["roster_out"] == 1

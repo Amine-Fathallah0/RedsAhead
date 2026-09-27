@@ -130,3 +130,36 @@ def parse_match_shots(data: dict) -> pd.DataFrame:
                 "last_action": shot.get("lastAction"),
             })
     return pd.DataFrame(rows)
+
+
+def parse_match_rosters(data: dict) -> pd.DataFrame:
+    """One row per player named in a match's squad, including unused substitutes
+    (minutes = 0). Nothing is filtered here; a minutes threshold, if wanted, is
+    an analysis-layer decision (see config/settings.yaml's min_minutes)."""
+    rows = []
+    for side in ("h", "a"):
+        for entry in data["rosters"][side].values():
+            rows.append({
+                "roster_id": entry["id"],
+                "player_id": entry["player_id"],
+                "player": entry["player"],
+                "team_id": entry["team_id"],
+                "side": entry["h_a"],
+                "position": entry["position"],
+                "position_order": int(entry["positionOrder"]),
+                "minutes": int(entry["time"]),
+                "roster_in": int(entry["roster_in"]),
+                "roster_out": int(entry["roster_out"]),
+                "goals": int(entry["goals"]),
+                "own_goals": int(entry["own_goals"]),
+                "shots": int(entry["shots"]),
+                "key_passes": int(entry["key_passes"]),
+                "assists": int(entry["assists"]),
+                "xg": float(entry["xG"]),
+                "xa": float(entry["xA"]),
+                "xg_chain": float(entry["xGChain"]),
+                "xg_buildup": float(entry["xGBuildup"]),
+                "yellow_card": int(entry["yellow_card"]),
+                "red_card": int(entry["red_card"]),
+            })
+    return pd.DataFrame(rows)
