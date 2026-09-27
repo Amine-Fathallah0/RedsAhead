@@ -104,3 +104,29 @@ def parse_player_seasons(data: dict, season: int) -> pd.DataFrame:
             "xg_buildup": float(player["xGBuildup"]),
         })
     return pd.DataFrame(rows)
+
+
+def parse_match_shots(data: dict) -> pd.DataFrame:
+    """One row per shot, both teams together. `team` is the shooting team's name,
+    so nobody has to remember what "h" and "a" stand for; `side` keeps home/away."""
+    rows = []
+    for side in ("h", "a"):
+        for shot in data["shots"][side]:
+            rows.append({
+                "shot_id": shot["id"],
+                "understat_match_id": shot["match_id"],
+                "minute": int(shot["minute"]),
+                "team": shot["h_team"] if shot["h_a"] == "h" else shot["a_team"],
+                "side": shot["h_a"],
+                "player_id": shot["player_id"],
+                "player": shot["player"],
+                "assister": shot.get("player_assisted") or None,
+                "x": float(shot["X"]),
+                "y": float(shot["Y"]),
+                "xg": float(shot["xG"]),
+                "situation": shot["situation"],
+                "shot_type": shot["shotType"],
+                "result": shot["result"],
+                "last_action": shot.get("lastAction"),
+            })
+    return pd.DataFrame(rows)

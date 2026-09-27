@@ -8,6 +8,7 @@ from backend.ingest.understat import (
     league_url,
     match_url,
     parse_league_matches,
+    parse_match_shots,
     parse_player_seasons,
     parse_team_match_stats,
 )
@@ -173,3 +174,46 @@ def test_fetch_match_data_parses_the_json_response():
     result = fetch_match_data(fetcher, "28778")
 
     assert result == payload
+
+
+def shot_entry(shot_id, minute, side, player, assisted):
+    """One shot in a match between 'Home FC' and 'Away FC'. Invented values, sent as strings."""
+    return {
+        "id": shot_id, "match_id": "5000", "minute": minute, "h_a": side,
+        "h_team": "Home FC", "a_team": "Away FC",
+        "player_id": "70" + shot_id, "player": player, "player_assisted": assisted,
+        "X": "0.885", "Y": "0.5", "xG": "0.31",
+        "situation": "OpenPlay", "shotType": "RightFoot", "result": "Goal",
+        "lastAction": "Pass",
+    }
+
+
+def test_parse_match_shots_combines_both_sides_and_names_the_shooting_team():
+    data = {
+        "shots": {
+            "h": [shot_entry("1", "24", "h", "Home Striker", "Home Winger")],
+            "a": [shot_entry("2", "40", "a", "Away Striker", None)],
+        }
+    }
+
+    shots = parse_match_shots(data)
+
+    assert len(shots) == 2
+    assert list(shots["team"]) == ["Home FC", "Away FC"]
+    assert list(shots["side"]) == ["h", "a"]
+    first = shots.iloc[0]
+    assert first["understat_match_id"] == "5000"
+    assert first["minute"] == 24
+    assert first["player"] == "Home Striker"
+    assert first["x"] == 0.885
+    assert first["xg"] == 0.31
+    assert first["situation"] == "OpenPlay"
+    assert first["shot_type"] == "RightFoot"
+
+
+def test_an_unassisted_shot_has_no_assister():
+    data = {"shots": {"h": [], "a": [shot_entry("2", "40", "a", "Away Striker", None)]}}
+
+    shots = parse_match_shots(data)
+
+    assert shots.iloc[0]["assister"] is None
