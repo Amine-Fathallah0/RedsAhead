@@ -4,6 +4,7 @@ import math
 
 from backend.ingest.understat import (
     fetch_league_data,
+    fetch_match_data,
     league_url,
     match_url,
     parse_league_matches,
@@ -163,3 +164,12 @@ def test_a_player_who_changed_clubs_keeps_the_raw_team_string():
     players = parse_player_seasons(data, 2025)
 
     assert players.iloc[0]["team"] == "Chelsea,Liverpool"
+
+
+def test_fetch_match_data_parses_the_json_response():
+    payload = {"shots": {"h": [], "a": []}, "rosters": {"h": {}, "a": {}}}
+    fetcher = FakeFetcher({match_url("28778"): json.dumps(payload)})
+
+    result = fetch_match_data(fetcher, "28778")
+
+    assert result == payload

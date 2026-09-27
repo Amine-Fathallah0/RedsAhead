@@ -18,6 +18,13 @@ def fetch_league_data(fetcher, league: str, season: int) -> dict:
     return json.loads(text)
 
 
+def fetch_match_data(fetcher, match_id: str) -> dict:
+    """Fetches and parses one match's data (shots and rosters)."""
+    url = match_url(match_id)
+    text = fetcher.get(url)
+    return json.loads(text)
+
+
 def parse_league_matches(data: dict) -> pd.DataFrame:
     """One row per played match in a league season, from the 'dates' list."""
     rows = []
