@@ -22,3 +22,7 @@ include = ["backend*"]
 
 [tool.pytest.ini_options]
 testpaths = ["backend/tests"]
+markers = [
+  "integration: uses the real Understat site (needs internet); run with `pytest -m integration`",
+]
+addopts = "-m 'not integration'"
