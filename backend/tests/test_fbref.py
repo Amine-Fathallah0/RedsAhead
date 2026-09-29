@@ -17,6 +17,19 @@ FIXTURES_CSV = (
 )
 
 
+# A season with no shootout at all: every GF/GA value looks like a plain
+# integer, plus one blank pair for an unplayed fixture. This is the exact shape
+# that made pandas silently read GF/GA as float64 and turn "2" into 2.0.
+NO_SHOOTOUT_CSV = (
+    "Date,Time,Comp,Round,Day,Venue,Result,GF,GA,Opponent,Poss,Attendance,Captain,"
+    "Formation,Opp Formation,Referee,Match Report,Notes\n"
+    "2026-08-23,16:30,Premier League,Matchweek 1,Sun,Away,D,2,2,Newcastle,61,52630,"
+    "Virgil van Dijk,4-2-3-1,4-2-3-1,Stuart Attwell,Match Report,\n"
+    "2027-05-30,16:00,Premier League,Matchweek 38,Sun,Home,,,,Bournemouth,,,,,,,"
+    "Head-to-Head,\n"
+)
+
+
 def test_parse_score_on_a_normal_result():
     goals, penalties = parse_score("2")
 
@@ -93,6 +106,13 @@ def test_load_all_fixtures_fails_clearly_when_the_folder_is_empty(tmp_path):
 
     with pytest.raises(FileNotFoundError, match="fbref_"):
         load_all_fixtures(tmp_path)
+
+
+def test_load_fixtures_csv_handles_a_season_with_no_shootouts(tmp_path):
+    fixtures = load_fixtures_csv(write_csv(tmp_path, text=NO_SHOOTOUT_CSV), "2026-2027")
+
+    assert len(fixtures) == 1
+    assert fixtures.iloc[0]["goals_for"] == 2
 
 
 def test_load_all_fixtures_rejects_a_malformed_season_in_the_filename(tmp_path):

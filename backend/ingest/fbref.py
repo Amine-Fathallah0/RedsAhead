@@ -29,7 +29,10 @@ def load_fixtures_csv(path, season: str) -> pd.DataFrame:
     """Read one manually exported FBref 'Scores & Fixtures' CSV. Only played
     matches are kept (a row with no Result is a fixture still to be played)."""
     path = Path(path)
-    df = pd.read_csv(path)
+    # GF/GA must stay text: a season with no penalty shootouts has only plain
+    # integers plus blanks (unplayed fixtures), which pandas would otherwise
+    # read as a float64 column and turn "2" into "2.0", breaking parse_score.
+    df = pd.read_csv(path, dtype={"GF": str, "GA": str})
     df.columns = df.columns.str.strip()   # FBref sometimes exports a leading
                                             # space before the first header
     missing = [column for column in REQUIRED_COLUMNS if column not in df.columns]
