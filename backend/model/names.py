@@ -12,13 +12,14 @@ def normalise(name: str) -> str:
     """Lowercase, strip accents and punctuation, so different spellings of the
     same club compare equal (e.g. "Atlético Madrid" and "Atletico  Madrid").
 
-    Also strips a leading two-letter country code (e.g. "es Atlético Madrid"):
-    FBref shows a small flag icon before European opponents, and copy-pasting
-    the table leaves that icon's alt-text behind as plain text."""
+    Deliberately does *not* touch a leading two-letter word: that's meaningful
+    for some real clubs ("RB Leipzig", "AC Milan"), so stripping it here would
+    silently corrupt those names. See NameMap.team() for where a genuine
+    leftover flag-code prefix (e.g. "es Atlético Madrid") is handled instead,
+    as a fallback that only fires when nothing else matched."""
     text = unicodedata.normalize("NFKD", name)
     text = "".join(ch for ch in text if not unicodedata.combining(ch))
-    text = _FLAG_CODE_PREFIX.sub("", text.lower())
-    return re.sub(r"[^a-z0-9]+", " ", text).strip()
+    return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
 
 
 class NameMap:
@@ -38,7 +39,15 @@ class NameMap:
                 self._lookup[key] = canonical
 
     def team(self, name: str) -> str | None:
-        return self._lookup.get(normalise(name))
+        found = self._lookup.get(normalise(name))
+        if found is not None:
+            return found
+        # Fallback only: a genuine leftover flag-code prefix (e.g. FBref's
+        # "es Atlético Madrid"). Tried second, so a real club name that
+        # happens to start with two letters and a space (e.g. "RB Leipzig")
+        # is never affected unless the direct lookup above already failed.
+        stripped = _FLAG_CODE_PREFIX.sub("", normalise(name))
+        return self._lookup.get(stripped)
 
 
 def load_name_map(path) -> NameMap:
