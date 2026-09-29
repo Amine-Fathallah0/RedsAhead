@@ -1,6 +1,6 @@
 from datetime import date
 
-from backend.ingest.fbref import load_fixtures_csv, parse_score
+from backend.ingest.fbref import load_all_fixtures, load_fixtures_csv, parse_score
 
 # A few real rows exported from FBref's Scores & Fixtures table (2025-2026), kept
 # small on purpose: one shootout match, one normal win, one unplayed fixture.
@@ -76,3 +76,29 @@ def test_load_fixtures_csv_leaves_penalties_missing_for_normal_matches(tmp_path)
     bournemouth = fixtures[fixtures["opponent"] == "Bournemouth"].iloc[0]
     assert isna(bournemouth["penalties_for"])
     assert isna(bournemouth["penalties_against"])
+
+
+def test_load_all_fixtures_reads_every_season_file_in_the_folder(tmp_path):
+    write_csv(tmp_path, name="fbref_2024-2025_fixtures.csv")
+    write_csv(tmp_path, name="fbref_2025-2026_fixtures.csv")
+
+    fixtures = load_all_fixtures(tmp_path)
+
+    assert set(fixtures["season"]) == {"2024-2025", "2025-2026"}
+    assert len(fixtures) == 4   # 2 played matches per file
+
+
+def test_load_all_fixtures_fails_clearly_when_the_folder_is_empty(tmp_path):
+    import pytest
+
+    with pytest.raises(FileNotFoundError, match="fbref_"):
+        load_all_fixtures(tmp_path)
+
+
+def test_load_all_fixtures_rejects_a_malformed_season_in_the_filename(tmp_path):
+    import pytest
+
+    write_csv(tmp_path, name="fbref_25-26_fixtures.csv")   # two-digit year: not fbref_YYYY-YYYY_fixtures.csv
+
+    with pytest.raises(ValueError, match="fbref_25-26_fixtures.csv"):
+        load_all_fixtures(tmp_path)

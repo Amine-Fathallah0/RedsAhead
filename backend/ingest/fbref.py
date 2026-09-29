@@ -55,3 +55,20 @@ def load_fixtures_csv(path, season: str) -> pd.DataFrame:
         "formation": df["Formation"],
         "opp_formation": df["Opp Formation"],
     })
+
+
+_FILE_NAME = re.compile(r"^fbref_(\d{4}-\d{4})_fixtures\.csv$")
+
+
+def load_all_fixtures(manual_dir) -> pd.DataFrame:
+    """Read every manually exported season file in `manual_dir` and combine them.
+    The season is read from the filename itself (fbref_<season>_fixtures.csv)."""
+    frames = []
+    for path in sorted(Path(manual_dir).glob("fbref_*_fixtures.csv")):
+        found = _FILE_NAME.match(path.name)
+        if found is None:
+            raise ValueError(f"unexpected file name: {path.name}")
+        frames.append(load_fixtures_csv(path, found.group(1)))
+    if not frames:
+        raise FileNotFoundError(f"no fbref_<season>_fixtures.csv files in {manual_dir}")
+    return pd.concat(frames, ignore_index=True)
