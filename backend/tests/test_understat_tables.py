@@ -13,7 +13,7 @@ from backend.ingest.understat import (
     parse_player_seasons,
     parse_team_match_stats,
 )
-from pandas import DataFrame
+from pandas import DataFrame, isna
 
 
 class FakeFetcher:
@@ -212,18 +212,27 @@ def test_parse_match_shots_combines_both_sides_and_names_the_shooting_team():
     assert first["shot_type"] == "RightFoot"
 
 
-def test_an_unassisted_shot_has_no_assister():
-    data = {"shots": {"h": [], "a": [shot_entry("2", "40", "a", "Away Striker", None)]}}
+def test_an_unassisted_shot_has_a_missing_assister():
+    data = {
+        "shots": {
+            "h": [shot_entry("1", "24", "h", "Home Striker", "Home Winger")],
+            "a": [shot_entry("2", "40", "a", "Away Striker", None)],
+        }
+    }
 
     shots = parse_match_shots(data)
 
-    assert shots.iloc[0]["assister"] is None
+    assert shots.iloc[0]["assister"] == "Home Winger"
+    assert isna(shots.iloc[1]["assister"])
 
 
-def roster_entry(player_id, name, side, minutes, roster_in, roster_out):
-    """One player's roster entry for a match. Invented values, sent as strings."""
+def roster_entry(roster_id, player_id, name, side, minutes, roster_in="0", roster_out="0"):
+    """One player's roster entry for a match. Invented values, sent as strings.
+
+    Like the real data, roster_in / roster_out are the *roster ids* of the
+    substitution partner ("0" when there is none), not minutes."""
     return {
-        "id": "9" + player_id, "player_id": player_id, "player": name,
+        "id": roster_id, "player_id": player_id, "player": name,
         "team_id": "87" if side == "h" else "80", "h_a": side,
         "position": "DMC", "positionOrder": "5",
         "time": minutes, "roster_in": roster_in, "roster_out": roster_out,
@@ -237,11 +246,11 @@ def test_parse_match_rosters_keeps_every_player_including_unused_subs():
     data = {
         "rosters": {
             "h": {
-                "1": roster_entry("101", "Starter", "h", "90", "0", "0"),
-                "2": roster_entry("102", "Unused Sub", "h", "0", "0", "0"),
+                "1": roster_entry("1", "101", "Starter", "h", "90"),
+                "2": roster_entry("2", "102", "Unused Sub", "h", "0"),
             },
             "a": {
-                "3": roster_entry("201", "Away Starter", "a", "78", "0", "1"),
+                "3": roster_entry("3", "201", "Away Starter", "a", "90"),
             },
         }
     }
@@ -258,15 +267,24 @@ def test_parse_match_rosters_keeps_every_player_including_unused_subs():
     assert unused["minutes"] == 0
 
 
-def test_parse_match_rosters_keeps_the_substitution_links():
+def test_substitution_links_join_the_two_players_of_a_substitution():
     data = {
         "rosters": {
-            "h": {},
-            "a": {"3": roster_entry("201", "Away Starter", "a", "78", "0", "1")},
+            "h": {
+                "1": roster_entry("1", "101", "Starter", "h", "63", roster_in="3"),
+                "2": roster_entry("2", "102", "Stayed On", "h", "90"),
+                "3": roster_entry("3", "103", "Substitute", "h", "27", roster_out="1"),
+            },
+            "a": {},
         }
     }
 
-    rosters = parse_match_rosters(data)
+    rosters = parse_match_rosters(data).set_index("player")
 
-    assert rosters.iloc[0]["roster_in"] == 0
-    assert rosters.iloc[0]["roster_out"] == 1
+    starter = rosters.loc["Starter"]
+    sub = rosters.loc["Substitute"]
+    stayed = rosters.loc["Stayed On"]
+    assert starter["roster_in"] == sub["roster_id"]    # the starter's replacement is the sub...
+    assert sub["roster_out"] == starter["roster_id"]   # ...and the sub replaced the starter
+    assert isna(stayed["roster_in"])                   # no substitution: "missing", not a magic 0
+    assert isna(stayed["roster_out"])

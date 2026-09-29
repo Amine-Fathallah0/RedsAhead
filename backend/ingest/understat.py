@@ -132,15 +132,28 @@ def parse_match_shots(data: dict) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _substitution_link(value):
+    """Understat writes 0 when a player has no substitution partner, otherwise the
+    partner's roster id. Return the id as text, or None when there is no partner,
+    so it can be compared directly with the `roster_id` column."""
+    text = str(value)
+    return None if text in ("", "0") else text
+
+
 def parse_match_rosters(data: dict) -> pd.DataFrame:
-    """One row per player named in a match's squad, including unused substitutes
-    (minutes = 0). Nothing is filtered here; a minutes threshold, if wanted, is
-    an analysis-layer decision (see config/settings.yaml's min_minutes)."""
+    """One row per player Understat lists for a match. Nothing is filtered here; if
+    a zero-minute player ever appears he is kept, and a minutes threshold is an
+    analysis-layer decision (see config/settings.yaml's min_minutes).
+
+    `roster_in` / `roster_out` are roster ids, not minutes: for a player who went
+    off, `roster_in` is the roster id of the player who replaced him; for a player
+    who came on, `roster_out` is the roster id of the player he replaced. The
+    minute of the swap is the outgoing player's `minutes`."""
     rows = []
     for side in ("h", "a"):
         for entry in data["rosters"][side].values():
             rows.append({
-                "roster_id": entry["id"],
+                "roster_id": str(entry["id"]),
                 "player_id": entry["player_id"],
                 "player": entry["player"],
                 "team_id": entry["team_id"],
@@ -148,8 +161,8 @@ def parse_match_rosters(data: dict) -> pd.DataFrame:
                 "position": entry["position"],
                 "position_order": int(entry["positionOrder"]),
                 "minutes": int(entry["time"]),
-                "roster_in": int(entry["roster_in"]),
-                "roster_out": int(entry["roster_out"]),
+                "roster_in": _substitution_link(entry["roster_in"]),
+                "roster_out": _substitution_link(entry["roster_out"]),
                 "goals": int(entry["goals"]),
                 "own_goals": int(entry["own_goals"]),
                 "shots": int(entry["shots"]),
