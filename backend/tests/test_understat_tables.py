@@ -255,9 +255,10 @@ def test_parse_match_rosters_keeps_every_player_including_unused_subs():
         }
     }
 
-    rosters = parse_match_rosters(data)
+    rosters = parse_match_rosters(data, "9001")
 
     assert len(rosters) == 3
+    assert (rosters["understat_match_id"] == "9001").all()
     assert set(rosters["player"]) == {"Starter", "Unused Sub", "Away Starter"}
     starter = rosters[rosters["player"] == "Starter"].iloc[0]
     assert starter["minutes"] == 90
@@ -279,7 +280,7 @@ def test_substitution_links_join_the_two_players_of_a_substitution():
         }
     }
 
-    rosters = parse_match_rosters(data).set_index("player")
+    rosters = parse_match_rosters(data, "9001").set_index("player")
 
     starter = rosters.loc["Starter"]
     sub = rosters.loc["Substitute"]

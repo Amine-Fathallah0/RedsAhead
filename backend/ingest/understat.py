@@ -140,7 +140,7 @@ def _substitution_link(value):
     return None if text in ("", "0") else text
 
 
-def parse_match_rosters(data: dict) -> pd.DataFrame:
+def parse_match_rosters(data: dict, match_id: str) -> pd.DataFrame:
     """One row per player Understat lists for a match. Nothing is filtered here; if
     a zero-minute player ever appears he is kept, and a minutes threshold is an
     analysis-layer decision (see config/settings.yaml's min_minutes).
@@ -148,11 +148,15 @@ def parse_match_rosters(data: dict) -> pd.DataFrame:
     `roster_in` / `roster_out` are roster ids, not minutes: for a player who went
     off, `roster_in` is the roster id of the player who replaced him; for a player
     who came on, `roster_out` is the roster id of the player he replaced. The
-    minute of the swap is the outgoing player's `minutes`."""
+    minute of the swap is the outgoing player's `minutes`.
+
+    Unlike shots, a raw roster entry carries no match id of its own, so the
+    caller passes it in - same reason parse_player_seasons takes `season`."""
     rows = []
     for side in ("h", "a"):
         for entry in data["rosters"][side].values():
             rows.append({
+                "understat_match_id": str(match_id),
                 "roster_id": str(entry["id"]),
                 "player_id": entry["player_id"],
                 "player": entry["player"],

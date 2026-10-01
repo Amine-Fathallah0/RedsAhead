@@ -110,7 +110,7 @@ def sample_matches(season_tables):
         samples.append({
             "match": match,
             "shots": parse_match_shots(data),
-            "rosters": parse_match_rosters(data),
+            "rosters": parse_match_rosters(data, match["understat_match_id"]),
         })
     return samples
 
