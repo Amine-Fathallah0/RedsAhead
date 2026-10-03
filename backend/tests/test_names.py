@@ -35,6 +35,14 @@ def test_a_leftover_country_flag_code_is_stripped_as_a_fallback():
     assert names.team("tr Galatasaray") == "Galatasaray"
 
 
+def test_a_three_letter_country_code_is_stripped_as_a_fallback():
+    # Some European opponents carry a three-letter code ("eng", "sct").
+    names = NameMap({"Chelsea": [], "Rangers": []})
+
+    assert names.team("eng Chelsea") == "Chelsea"
+    assert names.team("sct Rangers") == "Rangers"
+
+
 def test_a_real_short_prefix_in_a_canonical_name_is_not_mistaken_for_a_flag_code():
     # "RB" and "AC" are real, meaningful parts of these clubs' names, not a
     # leftover flag code; they must resolve directly, with nothing stripped.
