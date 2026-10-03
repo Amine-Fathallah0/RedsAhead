@@ -1,0 +1,8 @@
+# Seconds between network requests to any source (spec section 10).
+min_request_interval_seconds: 3
+cache_dir: backend/ingest/cache
+manual_dir: backend/ingest/manual
+db_path: data/redsahead.duckdb
+# Small-sample thresholds used by analysis in Plan 2.
+min_matches: 10
+min_minutes: 900

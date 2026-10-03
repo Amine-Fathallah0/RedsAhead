@@ -1,0 +1,54 @@
+# Canonical club name -> aliases seen from FBref and/or Understat.
+# Accents and case never need an alias entry (normalise() handles those), and
+# neither does FBref's leftover country-flag-code prefix on European opponents
+# (e.g. "es Atlético Madrid" -> normalise() strips the "es " automatically).
+# An opponent name that isn't found here is reported by the build, not
+# silently dropped or guessed at; add it here and rerun.
+teams:
+  Arsenal: []
+  Aston Villa: []
+  Bournemouth: [AFC Bournemouth]
+  Brentford: []
+  Brighton: [Brighton & Hove Albion, Brighton and Hove Albion]
+  Burnley: []
+  Chelsea: []
+  Coventry City: [Coventry]
+  Crystal Palace: []
+  Accrington Stanley: [Accrington]
+  Barnsley: []
+  Plymouth Argyle: []
+  Everton: []
+  Fulham: []
+  Hull City: [Hull]
+  Ipswich Town: [Ipswich]
+  Leeds United: [Leeds]
+  Leicester City: [Leicester]
+  Liverpool: []
+  Manchester City: [Man City]
+  Manchester United: [Manchester Utd, Man Utd, Man United]
+  Newcastle United: [Newcastle, Newcastle Utd]
+  Nottingham Forest: [Nottingham, "Nott'ham Forest", "Nott'm Forest"]
+  Southampton: []
+  Sunderland: []
+  Tottenham Hotspur: [Tottenham, Spurs]
+  West Ham United: [West Ham]
+  Wolverhampton Wanderers: [Wolves, Wolverhampton]
+
+  # European opponents (Champions League etc.): FBref only, no Understat
+  # counterpart to join against, but still mapped so the final table shows a
+  # clean opponent name instead of a leftover flag-code prefix.
+  Atlético Madrid: []
+  Real Madrid: []
+  Girona: []
+  Eintracht Frankfurt: [Frankfurt]
+  Bayer Leverkusen: [Leverkusen]
+  RB Leipzig: []
+  Lille: []
+  Marseille: []
+  Paris Saint-Germain: [Paris SG, PSG]
+  Bologna: []
+  Inter Milan: [Inter]
+  AC Milan: [Milan]
+  PSV Eindhoven: [PSV]
+  Galatasaray: []
+  Qarabağ: [Qarabag]

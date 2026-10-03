@@ -1,0 +1,16 @@
+# environments and caches
+.Reds/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+
+# raw data must never be committed (spec section 10)
+data/
+backend/ingest/cache/
+backend/ingest/manual/
+
+# frontend (Plan 4)
+node_modules/
+web/dist/
