@@ -5,7 +5,7 @@ from pathlib import Path
 import yaml
 
 
-_FLAG_CODE_PREFIX = re.compile(r"^[a-z]{2} (?=.)")
+_FLAG_CODE_PREFIX = re.compile(r"^[a-z]{2,3} (?=.)")
 
 
 def normalise(name: str) -> str:

@@ -16,7 +16,8 @@ settings = load_settings()
 fetcher = PoliteFetcher(settings.cache_dir, settings.min_request_interval_seconds)
 FBref = load_all_fixtures(settings.manual_dir)
 match_frames, stat_frames, player_frames = [], [], []
-for season in (2024, 2025, 2026):
+seasons = sorted(int(s.split("-")[0]) for s in FBref["season"].unique())
+for season in seasons:
     data = fetch_league_data(fetcher, "EPL", season)
     match_frames.append(parse_league_matches(data))
     stat_frames.append(parse_team_match_stats(data))
