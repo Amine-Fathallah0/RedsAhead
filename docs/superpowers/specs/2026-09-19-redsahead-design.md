@@ -19,13 +19,13 @@ Managerial eras (Klopp, Slot, Iraola) are a first-class dimension so tactical st
     - `GET /getLeagueData/{LEAGUE}/{season}` → `{teams, players, dates}` for a whole league season. `teams[id].history` has per-match team stats: `xG, xGA, npxG, npxGA, ppda, ppda_allowed, deep, deep_allowed, scored, missed, xpts, result, date`. `players` has season totals: `xG, xA, key_passes, xGChain, xGBuildup, time, position`, etc. `dates` lists every match with its id, teams and result.
     - `GET /getMatchData/{match_id}` → `{shots: {h, a}, rosters: {h, a}}` for one match. `shots` are per-shot records (minute, X, Y, xG, player, situation, shotType, result, assister). **`rosters` gives per-player, per-match minutes (`time`), position, substitution links (`roster_in`/`roster_out`), cards and per-match xG/xA/xGChain/xGBuildup/key_passes/assists — this is now our lineup and minutes source, not FBref.**
     - Both endpoints require the header `X-Requested-With: XMLHttpRequest`, or the server returns a 404 HTML page instead of JSON.
-    - Seasons available back to 2014/15. No bot check observed. Terms of use not yet checked (see §10).
+    - Seasons available back to 2014/15 (verified: 2017/18 complete, 380 matches). No bot check observed. Understat publishes no formal terms of use; see §10.
   - **FBref = context layer, now smaller than originally planned.** Now used only for: possession, own and opponent formation, competition/round, and result, from the "Scores & Fixtures" table (one CSV per season). The advanced Opta-based tables (pressures, xG, progressive passes, Scouting Report) are **absent for 2025-26 and 2026-27**; older seasons are unchecked and are not relied on. FBref sits behind a Cloudflare bot check, so automated scraping is not assumed to work; data is exported by hand (§9).
 - **Understat covers domestic league matches only (Premier League).** xG, PPDA, deep completions and shots exist only for league matches; European and cup matches carry FBref basics only (result, possession, formations). Era Comparison and Match Diagnosis therefore run on league matches.
 - **Consequence:** the dashboard cannot attribute a specific mistimed press to a specific player at a specific moment. Pressing is measured at team level (PPDA, deep completions). All player-to-outcome links are statistical correlations and are labelled as such.
 - **Coverage:** Understat from 2017/18 through the current season (aligned with FBref lineups where available). Era boundaries live in `config/eras.yaml` and can be corrected without code changes.
 - **Stack:** Python backend (FastAPI, DuckDB, pandas), React frontend (Plotly for charts).
-- **Open verification items:** Understat terms of use (including its `getLeagueData`/`getMatchData` endpoints, not just the pages); whether FBref formation data exists for every season between 2017/18 and now (confirmed present for 2017/18 and 2026/27: possession, own and opponent formation); how many manual FBref exports are really needed now that lineups come from Understat.
+- **Resolved verification items (2026-10-03):** Understat publishes no formal terms of use, so usage follows the norms in §10. All ten FBref season exports (2017/18 to 2026/27, 510 fixtures) parse cleanly, and Understat's 2017/18 season is complete.
 
 ## 3. Architecture
 
@@ -100,7 +100,7 @@ Liverpoool/
 
 ## 10. Data licensing and handling
 
-Source terms are informal or restrictive (per a third-party summary, not the sources' own terms): Understat has no formal licence and expects attribution and polite, non-commercial use; FBref data is Opta's, its terms restrict systematic scraping, and raw numbers must not be republished.
+Source terms are informal or restrictive. Understat publishes no formal terms of use or licence (checked 2026-10-03); the norms are attribution and polite, non-commercial use, and this project follows them. FBref data is Opta's, its terms restrict systematic scraping, and raw numbers must not be republished.
 
 - Never commit raw data: `backend/ingest/cache/`, `backend/ingest/manual/` and the DuckDB file are in `.gitignore`. The repo holds code only, so it can go public later without leaking data.
 - The UI shows derived analysis (charts, percentiles, model outputs), not raw FBref tables. Understat and FBref are credited in the UI footer and README.
