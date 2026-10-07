@@ -94,12 +94,16 @@ backend/tests/
 
 **Interfaces:**
 - Produces: `held_out_predictions(history, predictor) -> DataFrame` with one row per match: the actual xG and the predicted xG, using only matches dated before it.
-- Produces: `rmse(predictions) -> float`, the error metric.
+- Produces: `rmse(predictions) -> float`, the error metric for xG-predicting baselines (league average, the strength model).
+- Produces: `match_outcome_probabilities(home_xg, away_xg) -> (p_home, p_draw, p_away)`: the Poisson scoreline conversion — treat each side's predicted xG as a Poisson rate, sum every scoreline's probability by who wins. This turns any xG prediction into the same kind of answer Elo gives, with no invented parameters.
+- Produces: `brier_score(predictions) -> float`: how far a stated win/draw/loss probability was from the actual result, for comparing Elo and the Poisson-converted strength model on equal footing.
 
 - [ ] **Step 1: Write a leakage test.** Make a predictor that reads the match it is predicting. The harness must refuse it, or the test must show its error is not zero. This is what makes the gate honest.
 - [ ] **Step 2: Write a test that the harness uses only earlier matches**, by checking the training history it passes to the predictor for one match.
-- [ ] **Step 3: Confirm failures, then implement** the harness, which slices history by date for each match.
-- [ ] **Step 4: Confirm green**, then propose the commit `feat: held-out validation harness`.
+- [ ] **Step 3: Write tests for `match_outcome_probabilities`**: probabilities sum to 1; a side with much higher xG gets most of the win probability; a 0-0-ish pairing (both low xG) gives draw the biggest share.
+- [ ] **Step 4: Write a test for `brier_score`** on a hand-made set of predictions and actual results.
+- [ ] **Step 5: Confirm failures, then implement** the harness, the Poisson conversion, and the Brier score.
+- [ ] **Step 6: Confirm green**, then propose the commit `feat: held-out validation harness with outcome scoring`.
 
 ---
 
@@ -130,13 +134,17 @@ backend/tests/
 
 **Procedure:**
 - Using `validation.held_out_predictions`, run every league match from 2024/25 to 2026/27 through the attack/defence model and through each baseline.
-- Grid-search the half-life (5, 10, 20, unlimited) and the penalty, choosing the pair with the lowest held-out error. Record the chosen values.
-- Compare the best model's error with each baseline's.
+- Grid-search the half-life (5, 10, 20, unlimited) and the penalty, choosing the pair with the lowest held-out xG error. Record the chosen values.
+- Convert the chosen model's predicted xG to win/draw/loss probabilities with `match_outcome_probabilities`, and to expected points (`3×p_home + 1×p_draw`, or the away equivalent).
 
-**Gate rule:** the attack/defence model must have a lower held-out error than league average, last-five results, and Elo. If it does not, stop. Do not proceed to Task 6. Report the numbers to the user and revisit the model.
+**Gate rule, in two parts — each baseline is judged on the question it actually answers:**
+1. **xG accuracy:** the attack/defence model's held-out RMSE against actual xG must be lower than `league_average`'s.
+2. **Outcome accuracy:** the model's Brier score (via its Poisson-converted probabilities) must be lower than `elo_ratings`'s, and the model's expected-points RMSE against points actually earned must be lower than `last_five_results`'s.
 
-- [ ] **Step 1: Write the gate as an integration test** asserting the best model's error is below every baseline's.
-- [ ] **Step 2: Run it.** Record the chosen half-life, penalty and the four error numbers.
+If any comparison fails, stop. Do not proceed to Task 6. Report the numbers to the user and revisit the model.
+
+- [ ] **Step 1: Write the gate as an integration test** asserting all three comparisons pass.
+- [ ] **Step 2: Run it.** Record the chosen half-life, penalty, and every number from both parts of the gate.
 - [ ] **Step 3: If the gate passes**, record the numbers in the spec, then continue. If it fails, stop and report.
 - [ ] **Step 4: Propose the commit** `test: validate the strength model against baselines on real seasons`.
 
@@ -148,7 +156,7 @@ backend/tests/
 - Create: `backend/analysis/form.py`
 - Test: `backend/tests/test_analysis_form.py`, plus real-data checks
 
-**Definition:** `form(team, date) = sum over the team's last five league matches before date of (points won − expected points)`, where expected points come from the attack/defence model's predicted xG for that match, converted to win/draw/loss probabilities.
+**Definition:** `form(team, date) = sum over the team's last five league matches before date of (points won − expected points)`, where expected points come from the attack/defence model's predicted xG for that match, run through `validation.match_outcome_probabilities` (the same Poisson conversion the gate uses).
 
 - [ ] **Step 1: Write fixture tests:** a win against a strong opponent scores above one against a weak opponent with the same result, and a shutout draw at home to a weak side scores negative.
 - [ ] **Step 2: Write real-data checks against the examples we agreed:** Fulham 0-0 (12 Sep 2026) negative, Manchester City 1-0 positive and high, Coventry 1-0 modest, and the Villa and Real Madrid wins counted.
