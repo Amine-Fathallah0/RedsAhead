@@ -55,10 +55,14 @@ conn.execute("CREATE OR REPLACE TABLE matches AS SELECT * FROM dfBuildMatches")
 conn.execute("CREATE OR REPLACE TABLE shots AS SELECT * FROM shots_df")
 conn.execute("CREATE OR REPLACE TABLE player_season_stats AS SELECT * FROM understat_player_stats")
 conn.execute("CREATE OR REPLACE TABLE rosters AS SELECT * FROM rosters_df")
+# Every team's match list, not just Liverpool's - the strength model and the
+# baselines it's validated against both need the whole league, not one team.
+conn.execute("CREATE OR REPLACE TABLE league_matches AS SELECT * FROM understat_matches")
 conn.close()
 
 print(problems)
 print(
     f"Built {settings.db_path}: {len(dfBuildMatches)} matches, {len(shots_df)} shots, "
-    f"{len(understat_player_stats)} player-seasons, {len(rosters_df)} roster entries."
+    f"{len(understat_player_stats)} player-seasons, {len(rosters_df)} roster entries, "
+    f"{len(understat_matches)} league-wide matches."
 )

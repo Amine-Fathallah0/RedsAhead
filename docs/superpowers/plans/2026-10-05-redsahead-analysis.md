@@ -28,7 +28,7 @@
 ```
 backend/analysis/
   __init__.py
-  data.py          # the only database access: load_matches(), load_team_matches(), load_shots(), load_rosters(), load_player_seasons()
+  data.py          # the only database access: load_matches(), load_league_matches(), load_shots(), load_rosters(), load_player_seasons()
   thresholds.py    # display_threshold(matches_played) -> minutes
   baselines.py     # league_average, last_five_results, elo_ratings: the predictors the model must beat
   validation.py    # held_out_predictions(): predict each match using only earlier matches; error metrics
@@ -104,6 +104,25 @@ backend/tests/
 - [ ] **Step 4: Write a test for `brier_score`** on a hand-made set of predictions and actual results.
 - [ ] **Step 5: Confirm failures, then implement** the harness, the Poisson conversion, and the Brier score.
 - [ ] **Step 6: Confirm green**, then propose the commit `feat: held-out validation harness with outcome scoring`.
+
+---
+
+### Task 3b: Persist league-wide match history
+
+**Why:** `build.py` already fetches every team's match list per season (`understat_matches`, from `parse_league_matches`) to join against Liverpool's own fixtures, then discards it. Task 4's fit and Task 5's gate both need real matches for every team Liverpool's opponents are drawn from, not just Liverpool's 510. No new scraping is needed — only persisting what's already fetched.
+
+**Files:**
+- Edit: `backend/model/build.py` (one more `CREATE OR REPLACE TABLE`)
+- Edit: `backend/analysis/data.py` (one more loader)
+- Test: `backend/tests/test_analysis_data.py` (one more integration case)
+
+**Interfaces:**
+- Produces: `load_league_matches(db_path) -> DataFrame`, the full-league match list (`date`, `home_team`, `away_team`, `home_goals`, `away_goals`, `home_xg`, `away_xg`) across every stored season — the same shape Task 2's baselines and Task 3's validation harness already use on fixtures.
+
+- [ ] **Step 1: Add the table write** in `build.py`: `CREATE OR REPLACE TABLE league_matches AS SELECT * FROM understat_matches`.
+- [ ] **Step 2: Rerun `python -m backend.model.build`** and record the resulting row count.
+- [ ] **Step 3: Write the integration test** against that count, add `load_league_matches` to `data.py`, confirm green.
+- [ ] **Step 4: Propose the commit** `feat: persist league-wide match history for the strength model`.
 
 ---
 

@@ -18,6 +18,12 @@ def load_matches(db_path: Path | str) -> pd.DataFrame:
     return _read(db_path, "matches")
 
 
+def load_league_matches(db_path: Path | str) -> pd.DataFrame:
+    """Every team's league match list, not just Liverpool's - what the
+    strength model is fitted on and the baselines are judged against."""
+    return _read(db_path, "league_matches")
+
+
 def load_shots(db_path: Path | str) -> pd.DataFrame:
     return _read(db_path, "shots")
 
