@@ -114,16 +114,17 @@ backend/tests/
 - Test: `backend/tests/test_analysis_strength.py`
 
 **Interfaces:**
-- Produces: `fit(history, half_life_matches, penalty) -> Ratings`, where `Ratings` holds an attack and defence number for each team, plus a home advantage.
+- Produces: `fit(history, half_life_matches, penalty) -> Ratings`, where `Ratings` holds an attack number, a defence number, and a home-advantage adjustment for each team, plus the league-wide base and home-advantage terms.
 - Produces: `predict_xg(ratings, home, away) -> (float, float)`: expected xG for the home and away side.
 
-**Model:** for each match, each side's expected xG is `exp(base + home_advantage + attack[team] - defence[opponent])`. Each match is weighted by `0.5 ** (age_in_matches / half_life)`, so recent matches count more. The attack and defence numbers are fitted with an L2 penalty, which keeps ratings stable for teams with few matches.
+**Model:** the home side's expected xG is `exp(base + home_advantage + home_advantage_adjustment[home] + attack[home] - defence[away])`; the away side's is `exp(base + attack[away] - defence[home])` — no home terms apply to the side not playing at home. Each match is weighted by `0.5 ** (age_in_matches / half_life)`, so recent matches count more. Attack, defence, and the per-team home-advantage adjustment are all fitted with the same L2 penalty, toward zero. A team with few matches gets pulled toward an adjustment of zero — it just gets the league-wide `home_advantage` like everyone else — while a team with enough matches and a genuinely lopsided split (strong at home, poor away, the way Carrick's Manchester United were) can show a large adjustment, because the data earns it rather than the model assuming it.
 
 - [ ] **Step 1: Write a recovery test on synthetic data.** Build a league where team A's attack is known to be higher, simulate xG from the model, and check the fit recovers the ordering.
-- [ ] **Step 2: Write a test that the recency weighting works.** A team that improves midway should rate higher after the change than a flat-weighted fit says.
-- [ ] **Step 3: Write a test that the penalty shrinks ratings.** A larger penalty must move every rating toward zero.
-- [ ] **Step 4: Confirm failures, implement the fit** using a Poisson-style regression with weights and penalty (scipy's optimiser).
-- [ ] **Step 5: Confirm green**, then propose the commit `feat: attack/defence xG strength model`.
+- [ ] **Step 2: Write a recovery test for the home-advantage adjustment.** Build a team with an exaggerated home/away split in synthetic data and a team with a normal one; check the fit recovers a large adjustment for the first and a near-zero one for the second.
+- [ ] **Step 3: Write a test that the recency weighting works.** A team that improves midway should rate higher after the change than a flat-weighted fit says.
+- [ ] **Step 4: Write a test that the penalty shrinks ratings.** A larger penalty must move every rating — attack, defence, and the home-advantage adjustment alike — toward zero.
+- [ ] **Step 5: Confirm failures, implement the fit** using a Poisson-style regression with weights and penalty (scipy's optimiser).
+- [ ] **Step 6: Confirm green**, then propose the commit `feat: attack/defence xG strength model with per-team home advantage`.
 
 ---
 
