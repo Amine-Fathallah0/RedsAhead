@@ -133,17 +133,19 @@ backend/tests/
 - Test: `backend/tests/test_analysis_strength.py`
 
 **Interfaces:**
-- Produces: `fit(history, half_life_matches, penalty) -> Ratings`, where `Ratings` holds an attack number, a defence number, and a home-advantage adjustment for each team, plus the league-wide base and home-advantage terms.
+- Produces: `fit(history, half_life_days, penalty) -> Ratings`, where `Ratings` holds an attack number, a defence number, and a home-advantage adjustment for each team, plus the league-wide base and home-advantage terms.
 - Produces: `predict_xg(ratings, home, away) -> (float, float)`: expected xG for the home and away side.
 
-**Model:** the home side's expected xG is `exp(base + home_advantage + home_advantage_adjustment[home] + attack[home] - defence[away])`; the away side's is `exp(base + attack[away] - defence[home])` — no home terms apply to the side not playing at home. Each match is weighted by `0.5 ** (age_in_matches / half_life)`, so recent matches count more. Attack, defence, and the per-team home-advantage adjustment are all fitted with the same L2 penalty, toward zero. A team with few matches gets pulled toward an adjustment of zero — it just gets the league-wide `home_advantage` like everyone else — while a team with enough matches and a genuinely lopsided split (strong at home, poor away, the way Carrick's Manchester United were) can show a large adjustment, because the data earns it rather than the model assuming it.
+**Model:** the home side's expected xG is `exp(base + home_advantage + home_advantage_adjustment[home] + attack[home] - defence[away])`; the away side's is `exp(base + attack[away] - defence[home])` — no home terms apply to the side not playing at home. Each match is weighted by `0.5 ** (age_in_days / half_life_days)`, measured in calendar days (not matches) so the summer gap between seasons - when squads actually change - counts as the long stretch it is, rather than as "one match" of staleness. Attack, defence, and the per-team home-advantage adjustment are all fitted with the same L2 penalty, toward zero. A team with few matches gets pulled toward an adjustment of zero — it just gets the league-wide `home_advantage` like everyone else — while a team with enough matches and a genuinely lopsided split (strong at home, poor away, the way Carrick's Manchester United were) can show a large adjustment, because the data earns it rather than the model assuming it.
 
-- [ ] **Step 1: Write a recovery test on synthetic data.** Build a league where team A's attack is known to be higher, simulate xG from the model, and check the fit recovers the ordering.
-- [ ] **Step 2: Write a recovery test for the home-advantage adjustment.** Build a team with an exaggerated home/away split in synthetic data and a team with a normal one; check the fit recovers a large adjustment for the first and a near-zero one for the second.
-- [ ] **Step 3: Write a test that the recency weighting works.** A team that improves midway should rate higher after the change than a flat-weighted fit says.
-- [ ] **Step 4: Write a test that the penalty shrinks ratings.** A larger penalty must move every rating — attack, defence, and the home-advantage adjustment alike — toward zero.
-- [ ] **Step 5: Confirm failures, implement the fit** using a Poisson-style regression with weights and penalty (scipy's optimiser).
-- [ ] **Step 6: Confirm green**, then propose the commit `feat: attack/defence xG strength model with per-team home advantage`.
+Short-term fixture congestion (a team playing again two days after its last match) is a different effect - how tired a team was for one specific match, not how stale old data is - and stays out of this model. It's already captured as `days_since_previous_match` in the `matches` table, for a later task to use.
+
+- [x] **Step 1: Write a recovery test on synthetic data.** Build a league where team A's attack is known to be higher, simulate xG from the model, and check the fit recovers the ordering.
+- [x] **Step 2: Write a recovery test for the home-advantage adjustment.** Build a team with an exaggerated home/away split in synthetic data and two teams with a normal one; check the fit clearly separates the exaggerated team from the other two, and the two normal teams - built identically - land close to each other. (`home_advantage` and the per-team adjustment trade off freely against each other, so only their *relative* values are identifiable, not each team's absolute adjustment against a true zero - confirmed on real numbers before writing the assertion this way.)
+- [x] **Step 3: Write a test that the recency weighting works.** A team that improves midway should rate higher after the change than a flat-weighted fit says.
+- [x] **Step 4: Write a test that the penalty shrinks ratings.** A larger penalty must move every rating — attack, defence, and the home-advantage adjustment alike — toward zero.
+- [x] **Step 5: Confirm failures, implement the fit** using a Poisson-style regression with weights and penalty (scipy's optimiser).
+- [x] **Step 6: Confirm green**, then propose the commit `feat: attack/defence xG strength model with per-team home advantage`.
 
 ---
 
@@ -154,7 +156,7 @@ backend/tests/
 
 **Procedure:**
 - Using `validation.held_out_predictions`, run every league match from 2024/25 to 2026/27 through the attack/defence model and through each baseline.
-- Grid-search the half-life (5, 10, 20, unlimited) and the penalty, choosing the pair with the lowest held-out xG error. Record the chosen values.
+- Grid-search the half-life in days (14, 30, 60, 120, unlimited) and the penalty, choosing the pair with the lowest held-out xG error. Record the chosen values.
 - Convert the chosen model's predicted xG to win/draw/loss probabilities with `match_outcome_probabilities`, and to expected points (`3×p_home + 1×p_draw`, or the away equivalent).
 
 **Gate rule, in two parts — each baseline is judged on the question it actually answers:**
