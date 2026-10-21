@@ -96,7 +96,7 @@ backend/tests/
 - Produces: `held_out_predictions(history, predictor) -> DataFrame` with one row per match: the actual xG and the predicted xG, using only matches dated before it.
 - Produces: `rmse(predictions) -> float`, the error metric for xG-predicting baselines (league average, the strength model).
 - Produces: `match_outcome_probabilities(home_xg, away_xg) -> (p_home, p_draw, p_away)`: the Poisson scoreline conversion — treat each side's predicted xG as a Poisson rate, sum every scoreline's probability by who wins. This turns any xG prediction into the same kind of answer Elo gives, with no invented parameters.
-- Produces: `brier_score(predictions) -> float`: how far a stated win/draw/loss probability was from the actual result, for comparing Elo and the Poisson-converted strength model on equal footing.
+- Produces: `brier_score(predictions) -> float`: how far a stated win/draw/loss probability was from the actual result. General-purpose 3-way scoring infrastructure (useful later, e.g. in match diagnosis) — not what Task 5 ends up using to judge Elo, since Elo's `elo_expected` is a single expected-score number (a draw already counts as half a win, chess-Elo style), not a 3-way split. Forcing one onto Elo would mean inventing a draw probability it was never built to produce.
 
 - [ ] **Step 1: Write a leakage test.** Make a predictor that reads the match it is predicting. The harness must refuse it, or the test must show its error is not zero. This is what makes the gate honest.
 - [ ] **Step 2: Write a test that the harness uses only earlier matches**, by checking the training history it passes to the predictor for one match.
@@ -152,23 +152,36 @@ Short-term fixture congestion (a team playing again two days after its last matc
 ### Task 5: THE GATE (real data)
 
 **Files:**
-- Create: `backend/tests/test_analysis_real_data.py` (integration)
+- Script (one-time, not part of the pytest suite): the grid search over every `(half_life_days, penalty)` combination — this is a multi-hour run, not something CI or a normal integration-test sweep should ever execute.
+- Create: `backend/tests/test_analysis_real_data.py` (integration) — a **fast** permanent test, fixed to the hyperparameters the grid search chose, so the gate stays checkable without re-running the search.
 
 **Procedure:**
-- Using `validation.held_out_predictions`, run every league match from 2024/25 to 2026/27 through the attack/defence model and through each baseline.
+- Held-out matches: every league match from 2024/25 onward (August 2024 by date, no separate season tag needed — there's a clean close season with no Premier League matches in June/July, so "August or later → that year's season" is unambiguous from the date alone).
+- Refit once per distinct match **date** in that window, not once per match — several Premier League matches share a date, and (per the leakage fix above) all of them correctly get the same training history anyway. Cheap baselines (`league_average`, `elo_ratings`, `last_five_results`) are computed once per date too, independent of the grid, since they don't depend on `half_life_days`/`penalty`.
 - Grid-search the half-life in days (14, 30, 60, 120, unlimited) and the penalty, choosing the pair with the lowest held-out xG error. Record the chosen values.
-- Convert the chosen model's predicted xG to win/draw/loss probabilities with `match_outcome_probabilities`, and to expected points (`3×p_home + 1×p_draw`, or the away equivalent).
+- Convert the chosen model's predicted xG to win/draw/loss probabilities with `match_outcome_probabilities`, then reduce that to whichever single number each baseline is being judged against: an **expected score** (`p_home + 0.5×p_draw`) for the Elo comparison — Elo's own native currency, not a 3-way split — and **expected points** (`3×p_home + 1×p_draw`) for the last-five comparison, matching the scale `last_five_results` already returns.
 
 **Gate rule, in two parts — each baseline is judged on the question it actually answers:**
 1. **xG accuracy:** the attack/defence model's held-out RMSE against actual xG must be lower than `league_average`'s.
-2. **Outcome accuracy:** the model's Brier score (via its Poisson-converted probabilities) must be lower than `elo_ratings`'s, and the model's expected-points RMSE against points actually earned must be lower than `last_five_results`'s.
+2. **Outcome accuracy:** the model's expected-score RMSE (reusing `validation.rmse`) against the actual result (1 win / 0.5 draw / 0 loss) must be lower than Elo's own expected-score RMSE from `elo_expected`. The model's expected-points RMSE against points actually earned must also be lower than `last_five_results`'s.
 
 If any comparison fails, stop. Do not proceed to Task 6. Report the numbers to the user and revisit the model.
 
-- [ ] **Step 1: Write the gate as an integration test** asserting all three comparisons pass.
-- [ ] **Step 2: Run it.** Record the chosen half-life, penalty, and every number from both parts of the gate.
-- [ ] **Step 3: If the gate passes**, record the numbers in the spec, then continue. If it fails, stop and report.
-- [ ] **Step 4: Propose the commit** `test: validate the strength model against baselines on real seasons`.
+- [x] **Step 1: Write and run the grid-search script** (not a pytest test) over every half-life/penalty combination, in the background given the expected runtime.
+- [x] **Step 2: From its output**, write `test_analysis_real_data.py` as a fast integration test fixed to the winning hyperparameters, asserting all three comparisons pass.
+- [x] **Step 3: The gate passes.** Numbers recorded below; continuing to Task 6.
+- [x] **Step 4: Propose the commit** `test: validate the strength model against baselines on real seasons`.
+
+**Chosen values and results**, from a two-round grid search on 810 held-out Premier League matches (2024/25 onward, 240 distinct dates):
+
+- Round 1 (`half_life_days` ∈ {14, 30, 60, 120, unlimited}, `penalty` ∈ {0.01, 0.1, 1.0, 5.0}): best was (120, 5.0) at xG RMSE 0.8253 — but penalty kept improving all the way to 5.0, its upper boundary, so the search wasn't actually done.
+- Round 2 (`half_life_days` ∈ {120, 180, 250}, `penalty` ∈ {5.0, 10.0, 20.0, 50.0}): found a genuine interior optimum on both axes this time — penalty peaked at 10 at every half-life tried (worse on either side), and 180 days beat both 120 and 250. Winner: **`half_life_days=180`, `penalty=10.0`**, xG RMSE 0.8224 (a marginal improvement over round 1 — not worth a third round).
+
+| | Model | Baseline | |
+|---|---|---|---|
+| xG accuracy | 0.8224 | `league_average`: 0.9113 | PASS |
+| Outcome vs Elo (expected-score RMSE) | 0.3924 | `elo_ratings`: 0.3988 | PASS |
+| Points vs last-five (expected-points RMSE) | 1.1977 | `last_five_results`: 1.3778 | PASS |
 
 ---
 

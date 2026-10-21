@@ -15,12 +15,16 @@ MAX_GOALS = 15  # scorelines past this are vanishingly unlikely and add noise, n
 def held_out_predictions(history: pd.DataFrame, predictor) -> pd.DataFrame:
     """Run `predictor(training_history, home, away)` once per match in
     `history`, in date order, handing it only the matches strictly before
-    the one it is predicting. Returns one row per match: the actual and
-    predicted xG for both sides."""
+    the one it is predicting - by date, never by row position. Real
+    fixture lists have several matches sharing one date (every Saturday in
+    the Premier League), and slicing by position would let a later match
+    on the same date see an earlier match from that same date - information
+    no predictor would actually have at kickoff. Returns one row per match:
+    the actual and predicted xG for both sides."""
     ordered = history.sort_values("date", kind="stable").reset_index(drop=True)
     rows = []
-    for i, row in ordered.iterrows():
-        training_history = ordered.iloc[:i]
+    for _, row in ordered.iterrows():
+        training_history = ordered[ordered["date"] < row["date"]]
         predicted_home, predicted_away = predictor(training_history, row["home_team"], row["away_team"])
         for side, actual_xg, predicted_xg in [
             ("home", row["home_xg"], predicted_home),

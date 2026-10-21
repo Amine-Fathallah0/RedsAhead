@@ -61,6 +61,42 @@ def test_the_harness_only_passes_matches_dated_before_the_one_being_predicted():
     assert len(seen_histories[-1]) == 3
 
 
+def test_two_matches_on_the_same_date_never_see_each_other():
+    # A real fixture list has several matches sharing one date (every
+    # Premier League Saturday). Position-based slicing would let whichever
+    # same-date match sorts second see the first - something no predictor
+    # would actually know at kickoff. E and F both play on 2025-08-01,
+    # the same date as the existing A vs B match.
+    same_day_history = pd.concat([
+        HISTORY,
+        pd.DataFrame(
+            [(date(2025, 8, 1), "E", "F", 1, 1, 1.0, 1.0)],
+            columns=HISTORY.columns,
+        ),
+    ], ignore_index=True)
+
+    seen_histories = []
+
+    def recording_predictor(training_history, home, away):
+        seen_histories.append(training_history.copy())
+        return 1.0, 1.0
+
+    held_out_predictions(same_day_history, recording_predictor)
+
+    # held_out_predictions visits matches in the same sorted-by-date order
+    # the test fixture was built in - pair each call up with the date of
+    # the match it was predicting.
+    predicted_dates = same_day_history.sort_values("date", kind="stable")["date"].tolist()
+
+    # Whichever of the two 2025-08-01 matches is predicted, its training
+    # history must contain no 2025-08-01 row - including the other one.
+    # Before the date-based fix, the second same-day match (sorted right
+    # after the first) would have seen the first via its row position.
+    for predicted_date, training_history in zip(predicted_dates, seen_histories):
+        if predicted_date == date(2025, 8, 1):
+            assert training_history.empty
+
+
 def test_rmse_of_a_perfect_prediction_is_zero():
     predictions = pd.DataFrame({"actual_xg": [1.0, 2.0], "predicted_xg": [1.0, 2.0]})
 
