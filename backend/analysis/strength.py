@@ -73,6 +73,8 @@ def fit(history: pd.DataFrame, half_life_days: float | None, penalty: float) -> 
 
     `history` needs `date`, `home_team`, `away_team`, `home_xg`, `away_xg`
     - the same shape `load_league_matches` returns."""
+    if history.empty:
+        raise ValueError("fit needs at least one match")
     teams = sorted(set(history["home_team"]) | set(history["away_team"]))
     team_index = {team: i for i, team in enumerate(teams)}
     n = len(teams)

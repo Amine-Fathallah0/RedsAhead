@@ -193,10 +193,12 @@ If any comparison fails, stop. Do not proceed to Task 6. Report the numbers to t
 
 **Definition:** `form(team, date) = sum over the team's last five league matches before date of (points won − expected points)`, where expected points come from the attack/defence model's predicted xG for that match, run through `validation.match_outcome_probabilities` (the same Poisson conversion the gate uses).
 
-- [ ] **Step 1: Write fixture tests:** a win against a strong opponent scores above one against a weak opponent with the same result, and a shutout draw at home to a weak side scores negative.
-- [ ] **Step 2: Write real-data checks against the examples we agreed:** Fulham 0-0 (12 Sep 2026) negative, Manchester City 1-0 positive and high, Coventry 1-0 modest, and the Villa and Real Madrid wins counted.
-- [ ] **Step 3: Implement** `form.py` and confirm.
-- [ ] **Step 4: Propose the commit** `feat: opponent-adjusted form from the strength model`.
+- [x] **Step 1: Write fixture tests:** a win against a strong opponent scores above one against a weak opponent with the same result, and a shutout draw at home to a weak side scores negative.
+- [x] **Step 2: Write real-data checks against the examples we agreed** — only Fulham 0-0 (12 Sep 2026) turned out to be checkable: querying the real `matches` table showed Iraola has played just seven matches so far (through 2026-09-20, the data's current edge), none against Manchester City, Coventry, Aston Villa, or Real Madrid. Those were hypothetical illustrations from the planning conversation ("if we beat City 1-0..."), not matches that have happened yet. Real Madrid is a Champions League opponent regardless and could never be part of `form()` - it only uses league matches, per the plan's own global constraints. Confirmed: the Fulham draw scores negative, matching the agreed intuition. **Revisit the other three examples once those fixtures are actually played and ingested.**
+- [x] **Step 3: Implement** `form.py` and confirm.
+- [x] **Step 4: Propose the commit** `feat: opponent-adjusted form from the strength model`.
+
+Along the way: `fit()` crashed with a confusing low-level numpy error on an empty history (hit when computing form for a match whose own training window has nothing before it) instead of failing clearly - fixed to raise `ValueError`, matching `league_average`'s existing precedent.
 
 ---
 

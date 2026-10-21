@@ -45,6 +45,11 @@ def _simulate_history(true_ratings: Ratings, fixtures) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def test_fit_rejects_an_empty_history():
+    with pytest.raises(ValueError):
+        fit(pd.DataFrame(columns=["date", "home_team", "away_team", "home_xg", "away_xg"]), half_life_days=None, penalty=0.1)
+
+
 def test_fit_recovers_the_attack_ordering_on_synthetic_data():
     true_ratings = Ratings(
         base=0.3,
