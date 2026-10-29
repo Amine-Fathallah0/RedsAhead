@@ -208,9 +208,11 @@ Along the way: `fit()` crashed with a confusing low-level numpy error on an empt
 - Create: `backend/analysis/diagnosis.py`
 - Test: `backend/tests/test_analysis_diagnosis.py`
 
-- [ ] **Step 1: Test the rolling era baseline:** the last 10 same-era matches, nothing when fewer than 5 exist.
-- [ ] **Step 2: Test z-scores** for PPDA, xG and deep completions against that baseline, with the largest deviations ranked first.
-- [ ] **Step 3: Implement and confirm**, then propose the commit `feat: match diagnosis against the rolling era baseline`.
+- [x] **Step 1: Test the rolling era baseline:** the last 10 same-era matches, nothing when fewer than 5 exist.
+- [x] **Step 2: Test z-scores** for PPDA, xG and deep completions against that baseline, with the largest deviations ranked first.
+- [x] **Step 3: Implement and confirm**, then propose the commit `feat: match diagnosis against the rolling era baseline`.
+
+A real-data sanity check caught a genuine bug before it shipped: cup and European rows have no Understat stats (NaN for xg/ppda/deep - Understat covers the Premier League only), and the "last 10" window was pulling them in raw. pandas' mean/std silently skip NaN, so a window padded with cup matches could rest on far fewer real data points than its row count - and the "minimum 5" count checked raw rows, not valid ones, so it could wrongly pass. Fixed: `era_baseline` now filters to rows with real stats before windowing. Confirmed against real data too: Iraola's Bournemouth match (20 Sep 2026) correctly shows no baseline yet - only 4 real Premier League matches exist before it once the two cup/European rows are excluded.
 
 ---
 
@@ -220,8 +222,10 @@ Along the way: `fit()` crashed with a confusing low-level numpy error on an empt
 - Create: `backend/analysis/era.py`
 - Test: `backend/tests/test_analysis_era.py`
 
-- [ ] **Step 1: Test the era means, bootstrap confidence intervals and the permutation test** on a fixture where two eras clearly differ and where they do not.
-- [ ] **Step 2: Implement and confirm**, then propose the commit `feat: era comparison with confidence intervals and a permutation test`.
+- [x] **Step 1: Test the era means, bootstrap confidence intervals and the permutation test** on a fixture where two eras clearly differ and where they do not.
+- [x] **Step 2: Implement and confirm**, then propose the commit `feat: era comparison with confidence intervals and a permutation test`.
+
+Applied Task 7's lesson up front this time: `era_means` drops NaN (cup/European) rows before computing anything, with a test for it, rather than waiting to rediscover the same bug. Real-data sanity check (Klopp vs Slot): possession is a real, significant difference (61.1% vs 57.8%, p=0.0065); PPDA and xG are not (p=0.34, p=0.74) - a believable result, not a red flag.
 
 ---
 
