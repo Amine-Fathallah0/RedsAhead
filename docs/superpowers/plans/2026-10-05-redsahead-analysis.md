@@ -251,9 +251,11 @@ Note for later readers: `rosters` holds both teams' players per match, not just 
 
 **Definition:** from the shots table's goals (minute, side), rebuild the score at every minute of every match. For each player who came on, record the score when he entered, so the model can separate the player from the game state he came on in.
 
-- [ ] **Step 1: Test the score reconstruction** on a fixture with goals at known minutes.
-- [ ] **Step 2: Test the score state at a substitution minute** for a player who came on while his team was leading.
-- [ ] **Step 3: Implement and confirm**, then propose the commit `feat: score-state reconstruction for lineup controls`.
+- [x] **Step 1: Test the score reconstruction** on a fixture with goals at known minutes.
+- [x] **Step 2: Test the score state at a substitution minute** for a player who came on while his team was leading.
+- [x] **Step 3: Implement and confirm**, then propose the commit `feat: score-state reconstruction for lineup controls`.
+
+Checking real data before trusting the naive approach caught a genuine subtlety: `parse_match_rosters`'s own docstring (Plan 1, already merged) claims "the minute of the swap is the outgoing player's minutes" - true only when the outgoing player was an original starter. For a substitute who is later subbed off himself, his `minutes` is how long *he* was on the pitch, not his clock-exit position. Verified on real match 7432: Lallana replaced Wijnaldum at minute 67, played 5 minutes, then was replaced by Lovren - Lovren's real entry minute is 72 (67+5), not 5. 14 such substitution chains exist in the real data, so this wasn't a rare edge case. `entry_minute` walks `roster_out` back to a starter instead of trusting one hop; the misleading comment in `understat.py` is corrected to point at it.
 
 ---
 

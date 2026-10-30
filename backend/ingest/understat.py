@@ -148,7 +148,12 @@ def parse_match_rosters(data: dict, match_id: str) -> pd.DataFrame:
     `roster_in` / `roster_out` are roster ids, not minutes: for a player who went
     off, `roster_in` is the roster id of the player who replaced him; for a player
     who came on, `roster_out` is the roster id of the player he replaced. The
-    minute of the swap is the outgoing player's `minutes`.
+    outgoing player's `minutes` is only the match-clock swap minute when that
+    player started the match; for a substitute who is later subbed off himself,
+    `minutes` is how long *he* was on the pitch, not the clock position - his
+    entry minute has to be added back on. Getting the swap minute right means
+    walking `roster_out` back to a starter (`roster_out` null), summing `minutes`
+    along the way - see `backend.analysis.lineup.entry_minute`.
 
     Unlike shots, a raw roster entry carries no match id of its own, so the
     caller passes it in - same reason parse_player_seasons takes `season`."""
