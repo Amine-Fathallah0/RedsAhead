@@ -235,9 +235,11 @@ Applied Task 7's lesson up front this time: `era_means` drops NaN (cup/European)
 - Create: `backend/analysis/onoff.py`
 - Test: `backend/tests/test_analysis_onoff.py`
 
-- [ ] **Step 1: Test that the raw split counts matches with and without a player**, and that the sample size is reported alongside every difference.
-- [ ] **Step 2: Test that results below the adaptive threshold are flagged as greyed out**, not removed.
-- [ ] **Step 3: Implement and confirm**, then propose the commit `feat: raw on/off splits with sample sizes`.
+- [x] **Step 1: Test that the raw split counts matches with and without a player**, and that the sample size is reported alongside every difference.
+- [x] **Step 2: Test that results below the adaptive threshold are flagged as greyed out**, not removed.
+- [x] **Step 3: Implement and confirm**, then propose the commit `feat: raw on/off splits with sample sizes`.
+
+Note for later readers: `rosters` holds both teams' players per match, not just Liverpool's, so `raw_onoff` identifies Liverpool's own rows by matching `matches`' `venue` (Home/Away) to the roster's `side` (h/a) - a non-obvious join, tested explicitly (including that a same-numbered opponent-side player is never mistaken for Liverpool's own). Cup/European matches have no `understat_match_id` and so no roster data; they're excluded from both groups rather than guessed into "without the player." Real-data check (Salah, xG): 2.17 with him on the pitch (315 matches) vs 1.77 without (32) - a real attacking boost, while xGA barely moves (1.12 vs 1.16), as expected for an attacking player.
 
 ---
 
