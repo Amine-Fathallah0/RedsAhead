@@ -271,11 +271,20 @@ Checking real data before trusting the naive approach caught a genuine subtlety:
 
 **Validation:** the model must beat a version without player flags on held-out matches. If it doesn't, the player effects are not reported.
 
-- [ ] **Step 1: Test on synthetic data** that a planted player effect is recovered in sign and rough size.
-- [ ] **Step 2: Test that the counterfactual** equals the prediction with the player added minus the prediction without him.
-- [ ] **Step 3: Test that a player with few minutes gets a wider interval** than a regular starter.
-- [ ] **Step 4: Implement, confirm, and run the held-out comparison** against the no-player version.
-- [ ] **Step 5: Propose the commit** `feat: adjusted lineup effects with score-state controls and counterfactuals`.
+- [x] **Step 1: Test on synthetic data** that a planted player effect is recovered in sign and rough size.
+- [x] **Step 2: Test that the counterfactual** equals the prediction with the player added minus the prediction without him.
+- [x] **Step 3: Test that a player with few minutes gets a wider interval** than a regular starter.
+- [x] **Step 4: Implement, confirm, and run the held-out comparison** against the no-player version.
+- [x] **Step 5: Propose the commit** `feat: adjusted lineup effects with score-state controls and counterfactuals`.
+
+**Findings:**
+
+- Ridge is a closed-form fit (standardize columns, penalize everything but the intercept, rescale back) rather than a new dependency - `sklearn` isn't installed in this project, and the whole model is a direct enough calculation that writing it out matches `strength.py`'s own style (custom Poisson-deviance optimization, no GLM library either).
+- `score_state_control` generalizes `lineup.py`'s existing per-entry reconstruction to a minutes-weighted average goal difference across a whole match, so a team "cruising at 3-0" has a legitimate place to put that variance instead of it landing on whichever substitute was on the pitch.
+- Joining a Liverpool match's opponent name (`matches.opponent`, FBref's full names - "Tottenham Hotspur") against the strength model's own ratings (keyed by Understat's short names from `league_matches` - "Tottenham") silently returned 0.0 for ~10 clubs before this was caught: `opponent_net_strength` now routes both sides through the existing `backend/model/names.py` `NameMap` (the same one `build_matches()` already uses), rather than inventing a second, parallel name table.
+- Era dummies are one-hot by manager with the **most-common** era dropped as the baseline, not an arbitrary (e.g. alphabetical) one - the first implementation accidentally made the ~5-match Iraola caretaker spell the implicit baseline, which every other era's coefficient would then be measured against despite it being the era ridge has the least evidence about.
+- Alpha selection uses expanding-window (time-ordered) cross-validation, the same anti-leakage shape as `validation.held_out_predictions` - never validating a fold on a match using coefficients fitted partly on later ones.
+- **The validation gate failed on real data, honestly**: full model (with player flags) RMSE 1.4774 vs. the no-player-flags model RMSE 1.4057, at their respective best cross-validated alphas (3000 and 300 - each confirmed a genuine interior optimum, not a search-boundary artifact, by scanning a much wider alpha grid first, the same check Task 5's grid search needed). The player-flag model does not win, so per the plan's own rule, `player_lineup_effects` returns `effects=None` rather than reporting unproven per-player numbers. This is a believable result, not a bug: one match's xG difference is a very noisy target, and ~79 Liverpool players (many with only a handful of appearances) across 346 Understat-covered matches is a hard identification problem for an additive, linear per-player effect - the same difficulty well-documented for "plus-minus"-style sports models generally. The gate did its job.
 
 ---
 
