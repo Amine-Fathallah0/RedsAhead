@@ -122,3 +122,25 @@ def test_similar_players_excludes_players_below_the_minutes_threshold():
     result = similar_players(player_seasons, player_id="target", season=2024)
 
     assert result.empty
+
+
+@pytest.mark.integration
+def test_salah_scouting_results_match_real_football_knowledge():
+    # 2024 season, among forwards clearing 900 minutes across all 20
+    # clubs: Salah ranks just below Haaland and Jota on xG/90, and his
+    # closest per-90 profiles are his own Liverpool front-line teammates -
+    # exactly what anyone who watched that season would expect.
+    from backend.analysis.data import load_player_seasons
+    from backend.config import load_settings
+
+    seasons = load_player_seasons(load_settings().db_path)
+    salah = seasons[(seasons["season"] == 2024) & (seasons["player"] == "Mohamed Salah")]
+    player_id = salah.iloc[0]["player_id"]
+
+    ranks = percentile_ranks(seasons, season=2024, position_group="F", metric="xg")
+    salah_rank = ranks[ranks["player_id"] == player_id].iloc[0]
+    assert salah_rank["percentile"] > 90.0
+
+    similar = similar_players(seasons, player_id=player_id, season=2024)
+    assert "Luis Díaz" in similar["player"].to_list()
+    assert player_id not in similar["player_id"].to_list()

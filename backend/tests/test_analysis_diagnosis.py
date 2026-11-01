@@ -125,3 +125,20 @@ def test_era_baseline_raises_when_there_is_no_match_on_that_date():
 
     with pytest.raises(ValueError):
         era_baseline(matches, date(2025, 1, 2))
+
+
+@pytest.mark.integration
+def test_klopps_final_anfield_match_is_a_real_xg_outlier():
+    # 2024-05-19, Liverpool 2-0 Wolves: Klopp's last-ever match in charge
+    # at Anfield. Against his own team's preceding 10-match form, the
+    # match's xG stands out far more than its PPDA or deep completions -
+    # a real, legible example of what z_scores is for.
+    from backend.analysis.data import load_matches
+    from backend.config import load_settings
+
+    matches = load_matches(load_settings().db_path)
+    scores = z_scores(matches, "2024-05-19")
+
+    assert scores is not None
+    assert list(scores.index)[0] == "xg"
+    assert scores["xg"] > 2.0  # a multi-sigma overperformance, not a borderline one

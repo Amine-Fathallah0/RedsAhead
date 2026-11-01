@@ -81,3 +81,24 @@ def test_raw_onoff_is_not_flagged_once_the_player_clears_the_threshold():
     result = raw_onoff(PLAYER_X, matches, rosters, "xg")
 
     assert result["below_threshold"] is False
+
+
+@pytest.mark.integration
+def test_salah_raw_onoff_shows_a_real_attacking_boost():
+    # Mohamed Salah (rosters.player_id "1250" - rosters stores ids as
+    # strings, unlike player_season_stats' matching int-like values):
+    # across every match Liverpool have ever played with Understat
+    # coverage, Liverpool's own xG is higher with him on the pitch than
+    # without - the simplest possible version of "does this player matter."
+    from backend.analysis.data import load_matches, load_rosters
+    from backend.config import load_settings
+
+    db_path = load_settings().db_path
+    matches = load_matches(db_path)
+    rosters = load_rosters(db_path)
+
+    result = raw_onoff("1250", matches, rosters, "xg")
+
+    assert result["with_n"] > result["without_n"]  # Salah has started most matches since 2017
+    assert result["with_player_mean"] > result["without_player_mean"]
+    assert result["below_threshold"] is False

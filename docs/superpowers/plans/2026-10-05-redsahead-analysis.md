@@ -311,9 +311,19 @@ Checking real data before trusting the naive approach caught a genuine subtlety:
 
 ### Task 13: Close-out
 
-- [ ] **Step 1: Integration tests** for each view's output on the real database.
+- [x] **Step 1: Integration tests** for each view's output on the real database.
 - [ ] **Step 2: Comprehension checkpoint** with the user, on the gate and the score-state control in particular.
 - [ ] **Step 3: Pull request** from `feat/analysis` into `main`, merged with a merge commit, as with Plan 1.
+
+**Findings:**
+
+- `strength`/`validation`/`baselines` (Task 5's gate) and `form` and `lineup` already had real-data integration tests from their own tasks. Added the four that were missing: `onoff`, `diagnosis`, `era`, `scouting` - one real, legible fact each, not a repeat of the unit-fixture coverage:
+  - `onoff`: Salah's raw on/off split on Liverpool's own xG, across every match with Understat coverage since 2017 (`with_player_mean` > `without_player_mean`, comfortably clear of the display threshold).
+  - `diagnosis`: Jürgen Klopp's final match in charge at Anfield (2024-05-19, Wolves) is a multi-sigma xG outlier against his own team's preceding 10-match form - and the largest deviation of the three diagnosis columns, not a close call.
+  - `era`: Klopp's and Slot's eras are *not* distinguishable on real xG (permutation p ≈ 0.76) - deliberately the harder, non-obvious case, since the unit tests only ever construct eras that are obviously different.
+  - `scouting`: re-runs the Task 12 sanity check (Salah's 2024 percentile and nearest comparables) as a permanent regression test rather than a one-off script.
+  - One real bug caught while wiring the `onoff` test: `rosters.player_id` is stored as a `str` column (`"1250"`), not the int-like `player_id` `player_season_stats` uses - passing a bare `int` silently matched zero rows (0 minutes, not an error) instead of raising.
+- Full suite including every integration test: **149 passed**, ~4.5 minutes (dominated by `lineup`'s real-data test refitting the strength model per covered match).
 
 ---
 

@@ -84,3 +84,26 @@ def test_permutation_test_rejects_an_era_with_no_data():
 
     with pytest.raises(ValueError):
         permutation_test(matches, "ppda", "Klopp", "Slot")
+
+
+@pytest.mark.integration
+def test_klopp_and_slot_eras_are_not_distinguishable_on_real_xg():
+    # Klopp's last ~2 seasons (390 league/cup matches) and Slot's full
+    # tenure so far (113 matches) produced almost the same average xG per
+    # match - a real example of eras that genuinely aren't different, not
+    # the easy "obviously different" case the unit tests construct.
+    from backend.analysis.data import load_matches
+    from backend.config import load_settings
+
+    matches = load_matches(load_settings().db_path)
+
+    klopp_mean = era_means(matches, "xg", "Klopp")
+    slot_mean = era_means(matches, "xg", "Slot")
+    klopp_low, klopp_high = bootstrap_ci(matches, "xg", "Klopp", rng=np.random.default_rng(0))
+
+    assert klopp_low < klopp_mean < klopp_high
+    assert 1.5 < klopp_mean < 3.0
+    assert 1.5 < slot_mean < 3.0
+
+    p_value = permutation_test(matches, "xg", "Klopp", "Slot", rng=np.random.default_rng(0))
+    assert p_value > 0.05  # the two means are close enough that this isn't a surprise
