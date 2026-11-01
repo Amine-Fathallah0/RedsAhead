@@ -10,7 +10,7 @@ An interactive dashboard combining player analysis, tactical analysis and scouti
 
 ## Status
 
-This repo currently holds the **data foundation**: ingestion, cleaning, and a DuckDB database joining Understat and FBref data across multiple seasons, all test-covered. The analysis layer, API and frontend dashboard described in the [design spec](docs/superpowers/specs/2026-09-19-redsahead-design.md) are not built yet — see the [implementation plan](docs/superpowers/plans/2026-09-20-redsahead-data-foundation.md) for what this covers and what comes next.
+This repo currently holds the **data foundation** and the **analysis layer**: ingestion, cleaning and a DuckDB database joining Understat and FBref data across multiple seasons ([plan 1](docs/superpowers/plans/2026-09-20-redsahead-data-foundation.md)), plus a validated attack/defence strength model, opponent-adjusted form, match diagnosis, era comparison, raw and ridge-adjusted player impact, and scouting ([plan 2](docs/superpowers/plans/2026-10-05-redsahead-analysis.md)) — all test-covered, including checks against the real database. Every analysis result is validated against a baseline on held-out matches before it's trusted; when a model doesn't clear that bar (the ridge-adjusted lineup effects don't yet beat a model with no player information at all), the result is withheld rather than reported anyway. The API and frontend dashboard described in the [design spec](docs/superpowers/specs/2026-09-19-redsahead-design.md) are not built yet.
 
 ## Data sources and credit
 
@@ -58,8 +58,8 @@ This fetches each Understat season and match (cached afterwards, so reruns are f
 ## Running the tests
 
 ```bash
-pytest                 # unit tests: offline, run in CI on every push
-pytest -m integration  # also checks the real Understat site (needs internet)
+pytest                 # unit tests: offline, small fixtures, run in CI on every push
+pytest -m integration  # also validates against data/redsahead.duckdb and the real Understat site (needs internet for ingest checks)
 ```
 
 ## Project layout
@@ -70,6 +70,8 @@ backend/
   ingest/         fbref.py, understat.py, polite_fetcher.py
                   cache/, manual/   (gitignored — raw data lives here only)
   model/          eras.py, names.py, matches.py, build.py
+  analysis/       data.py, thresholds.py, baselines.py, validation.py, strength.py,
+                  form.py, diagnosis.py, era.py, onoff.py, lineup.py, scouting.py
   tests/          unit tests + integration tests (pytest -m integration)
 data/             redsahead.duckdb  (gitignored)
 docs/superpowers/ design spec and implementation plans
