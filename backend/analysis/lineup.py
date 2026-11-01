@@ -86,7 +86,10 @@ def score_state_control(shots: pd.DataFrame, side: str, match_length: int = 90) 
     return weighted_sum / match_length
 
 
-DEFAULT_RIDGE_ALPHAS = (0.1, 0.3, 1.0, 3.0, 10.0, 30.0, 100.0, 300.0, 1000.0, 3000.0, 10000.0, 30000.0)
+DEFAULT_RIDGE_ALPHAS = (
+    0.1, 0.3, 1.0, 3.0, 10.0, 30.0, 100.0, 300.0, 1000.0, 3000.0,
+    10000.0, 30000.0, 100000.0, 300000.0,
+)
 
 
 def _expanding_folds(n: int, n_folds: int, min_train: int):
@@ -165,8 +168,13 @@ def build_lineup_design_matrix(
     whole dataset has no earlier one to count from) is dropped rather
     than given an invented rest value.
 
-    Returns (X, y, player_columns): X holds one 0/1 column per Liverpool
-    player who ever appeared, plus opponent_strength (fitted on league
+    Returns (X, y, player_columns): X holds one column per Liverpool
+    player who ever appeared - his minutes played, as a fraction of a
+    full 90 (0.0 never played, 1.0 the full match, ~0.33 a 30-minute
+    cameo) rather than a flat 0/1, so a late substitute isn't credited or
+    blamed for the match as if he'd started it. counterfactual_effect's
+    "flag at 1 vs 0" comparison then reads as "played the whole match"
+    vs. "didn't play at all" - plus opponent_strength (fitted on league
     history strictly before that match), is_home, rest_days, one era
     dummy per manager but the most-common one (the implicit baseline -
     with only one manager in the data, no dummy is needed at all), and
@@ -177,12 +185,13 @@ def build_lineup_design_matrix(
     liverpool_side = covered["venue"].map({"Home": "h", "Away": "a"})
     match_side = covered[["understat_match_id"]].assign(side=liverpool_side.values)
     lfc_rosters = rosters.merge(match_side, on=["understat_match_id", "side"])
-    played = lfc_rosters[lfc_rosters["minutes"] > 0]
+    played = lfc_rosters[lfc_rosters["minutes"] > 0].assign(minutes=lambda df: df["minutes"].astype(float))
 
-    appearance = played.assign(appeared=1.0).pivot_table(
-        index="understat_match_id", columns="player_id", values="appeared", aggfunc="max", fill_value=0.0
+    appearance = played.pivot_table(
+        index="understat_match_id", columns="player_id", values="minutes", aggfunc="sum", fill_value=0.0
     )
     appearance = appearance.reindex(covered["understat_match_id"].to_numpy(), fill_value=0.0).reset_index(drop=True)
+    appearance = appearance / 90.0
     appearance.columns = [f"player_{player_id}" for player_id in appearance.columns]
     player_columns = list(appearance.columns)
 

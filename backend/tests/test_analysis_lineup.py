@@ -298,7 +298,7 @@ def test_build_lineup_design_matrix_assembles_the_expected_columns_and_rows():
     ])
     rosters = pd.DataFrame([
         {"understat_match_id": "m1", "side": "h", "player_id": "p1", "minutes": 90},
-        {"understat_match_id": "m1", "side": "h", "player_id": "p2", "minutes": 90},
+        {"understat_match_id": "m1", "side": "h", "player_id": "p2", "minutes": 30},  # a substitute, not a full match
         {"understat_match_id": "m2", "side": "a", "player_id": "p1", "minutes": 90},
         {"understat_match_id": "m2", "side": "a", "player_id": "p3", "minutes": 90},
     ])
@@ -316,8 +316,8 @@ def test_build_lineup_design_matrix_assembles_the_expected_columns_and_rows():
     X, y, player_columns = build_lineup_design_matrix(matches, rosters, shots, league_matches, name_map)
 
     assert sorted(player_columns) == ["player_p1", "player_p2", "player_p3"]
-    assert list(X["player_p1"]) == [1.0, 1.0]
-    assert list(X["player_p2"]) == [1.0, 0.0]
+    assert list(X["player_p1"]) == [1.0, 1.0]  # played the full 90 both times
+    assert list(X["player_p2"]) == pytest.approx([30 / 90, 0.0])  # a substitute, not a full match
     assert list(X["player_p3"]) == [0.0, 1.0]
     assert list(X["is_home"]) == [1.0, 0.0]
     assert list(X["rest_days"]) == [7.0, 7.0]
