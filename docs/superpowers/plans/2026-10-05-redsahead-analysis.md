@@ -297,9 +297,15 @@ Checking real data before trusting the naive approach caught a genuine subtlety:
 
 **Scope:** all 20 clubs, from the player-season table, filtered by minutes and position.
 
-- [ ] **Step 1: Test percentile ranks** on a fixture with known ordering.
-- [ ] **Step 2: Test cosine similarity** on standardised per-90 profiles, and that a player is not returned as similar to himself.
-- [ ] **Step 3: Implement and confirm**, then propose the commit `feat: scouting by percentile and similarity across all 20 clubs`.
+- [x] **Step 1: Test percentile ranks** on a fixture with known ordering.
+- [x] **Step 2: Test cosine similarity** on standardised per-90 profiles, and that a player is not returned as similar to himself.
+- [x] **Step 3: Implement and confirm**, then propose the commit `feat: scouting by percentile and similarity across all 20 clubs`.
+
+**Findings:**
+
+- "Filtered by minutes" uses `config/settings.yaml`'s `min_minutes: 900` directly (a flat per-season cutoff), not `thresholds.display_threshold()` - that adaptive formula was built around a single team's in-season on/off split (it scales with how many matches *the team* has played), not a player's own season total across 20 different clubs, so stretching it here would have been reusing the wrong tool for a passing resemblance. Confirmed with the user before implementing, since the plan's own "same adaptive threshold" note was genuinely ambiguous between the two.
+- "Filtered by... position" is Understat's own position string's first token (`primary_position`): it lists a player's positions most-played first ("F M S" for a forward occasionally used in midfield or off the bench), so the first token is the one that actually describes him. The "S"-only entries Understat gives up and coded as pure substitute never clear `min_minutes` anyway (~3 games, ~27 minutes on average in the real data) - checked, so no special-casing was needed.
+- Real-data check (2024 season, forwards, xG/90): Haaland ranks 1st, Jota 2nd, Salah 3rd (97.4th percentile of 78 eligible forwards) - a sane, recognisable ordering. Salah's most similar standardised per-90 profiles are Luis Díaz, Cody Gakpo, and Darwin Núñez - his own front-line teammates sharing a system and service, which is exactly the kind of result that makes the cosine-similarity approach credible rather than just numerically plausible.
 
 ---
 
