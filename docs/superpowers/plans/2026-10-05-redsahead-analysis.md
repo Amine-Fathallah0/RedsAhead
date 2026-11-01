@@ -312,7 +312,7 @@ Checking real data before trusting the naive approach caught a genuine subtlety:
 ### Task 13: Close-out
 
 - [x] **Step 1: Integration tests** for each view's output on the real database.
-- [ ] **Step 2: Comprehension checkpoint** with the user, on the gate and the score-state control in particular.
+- [x] **Step 2: Comprehension checkpoint** with the user, on the gate and the score-state control in particular.
 - [ ] **Step 3: Pull request** from `feat/analysis` into `main`, merged with a merge commit, as with Plan 1.
 
 **Findings:**
@@ -324,6 +324,7 @@ Checking real data before trusting the naive approach caught a genuine subtlety:
   - `scouting`: re-runs the Task 12 sanity check (Salah's 2024 percentile and nearest comparables) as a permanent regression test rather than a one-off script.
   - One real bug caught while wiring the `onoff` test: `rosters.player_id` is stored as a `str` column (`"1250"`), not the int-like `player_id` `player_season_stats` uses - passing a bare `int` silently matched zero rows (0 minutes, not an error) instead of raising.
 - Full suite including every integration test: **149 passed**, ~4.5 minutes (dominated by `lineup`'s real-data test refitting the strength model per covered match).
+- Comprehension checkpoint on the gate and score-state control: confirmed. Initial read on the gate question was partially off (focused on low-minute players, which is the bootstrap CI's job, not the gate's) until walked through why ridge coefficients are never exactly zero - so "non-zero coefficient" can't fail even on pure noise, which is why only held-out comparison can catch overfitting. Initial read on score-state control conflated it with the match result (assumed a come-from-behind win would score positive); corrected by walking the Liverpool-down-0-1-then-wins-2-1 example minute by minute to ~-0.72 - clearly negative, because the control tracks time spent in each game state, not the final scoreline.
 
 ---
 
